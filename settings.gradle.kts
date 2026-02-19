@@ -1,1 +1,1 @@
-rootProject.name = "mysawit-auth"
+rootProject.name = "mysawit-delivery"
