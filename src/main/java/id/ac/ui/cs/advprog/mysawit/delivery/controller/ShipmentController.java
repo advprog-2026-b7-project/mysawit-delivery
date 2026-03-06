@@ -25,7 +25,7 @@ public class ShipmentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/{id}/assign-driver")
+    @PatchMapping("/{id}/assign-driver")
     public ResponseEntity<ShipmentResponse> assignDriver(@PathVariable("id") UUID shipmentId,
                                                          @RequestBody Map<String, UUID> requestBody){
         UUID driverId = requestBody.get("driverId");
