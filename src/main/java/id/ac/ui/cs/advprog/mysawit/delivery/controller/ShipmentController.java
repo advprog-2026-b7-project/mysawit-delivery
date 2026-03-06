@@ -2,9 +2,7 @@ package id.ac.ui.cs.advprog.mysawit.delivery.controller;
 
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.CreateShipmentRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.ShipmentResponse;
-import id.ac.ui.cs.advprog.mysawit.delivery.repository.ShipmentRepository;
 import id.ac.ui.cs.advprog.mysawit.delivery.service.ShipmentService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +12,14 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/deliveries")
-@RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:3000")
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
+
+    public ShipmentController(ShipmentService shipmentService) {
+        this.shipmentService = shipmentService;
+    }
 
     @PostMapping
     public ResponseEntity<ShipmentResponse> createShipment(@RequestBody CreateShipmentRequest request){
