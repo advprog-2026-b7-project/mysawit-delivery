@@ -1,8 +1,7 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -13,6 +12,9 @@ import java.util.UUID;
 @Entity
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "shipments")
 public class Shipment {
 
@@ -26,7 +28,7 @@ public class Shipment {
     @Column(name = "mandor_id", nullable = false)
     private UUID mandorId;
 
-    @Column(name = "driver_id", nullable = false)
+    @Column(name = "driver_id")
     private UUID driverId;
 
     @Column(name = "total_weight_kg", nullable = false, precision = 10, scale = 2)
