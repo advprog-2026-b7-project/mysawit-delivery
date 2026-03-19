@@ -32,8 +32,11 @@ class DefaultWeightValidatorTest {
 
     @Test
     void testValidateFailedWeightExceedsLimit() {
+        BigDecimal invalidWeight = new BigDecimal("400.01");
+
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> validator.validate(new BigDecimal("400.01")));
+                () -> validator.validate(invalidWeight));
+
         assertEquals("Berat muatan tidak boleh melebihi 400 kg!", exception.getMessage());
     }
 
@@ -46,8 +49,10 @@ class DefaultWeightValidatorTest {
 
     @Test
     void testValidateFailedNegativeWeight() {
+        BigDecimal negativeWeight = new BigDecimal("-50.00");
+
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> validator.validate(new BigDecimal("-50.00")));
+                () -> validator.validate(negativeWeight));
         assertEquals("Berat muatan harus lebih dari 0 kg!", exception.getMessage());
     }
 }

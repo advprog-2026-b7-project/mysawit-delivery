@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
-public class ShipmentServiceImplTest {
+class ShipmentServiceImplTest {
     @Mock
     private ShipmentRepository shipmentRepository;
 
