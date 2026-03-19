@@ -36,6 +36,7 @@ dependencies {
     testImplementation("com.h2database:h2")
     testImplementation("org.projectlombok:lombok")
     runtimeOnly("com.h2database:h2")
+    testImplementation("com.h2database:h2")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
