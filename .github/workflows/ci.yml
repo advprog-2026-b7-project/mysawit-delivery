@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+      - '**'
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
+      - staging
 
 jobs:
   build:
@@ -46,6 +50,7 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
 
       - name: SonarCloud Scan
+        if: github.ref == 'refs/heads/main'
         uses: SonarSource/sonarcloud-github-action@v2
         with:
           args: >

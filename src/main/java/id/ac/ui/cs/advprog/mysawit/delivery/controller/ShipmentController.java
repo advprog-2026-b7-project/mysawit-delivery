@@ -12,7 +12,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/deliveries")
-@CrossOrigin(origins = "http://localhost:3000")
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
@@ -22,14 +21,16 @@ public class ShipmentController {
     }
 
     @PostMapping
-    public ResponseEntity<ShipmentResponse> createShipment(@RequestBody CreateShipmentRequest request){
+    public ResponseEntity<ShipmentResponse> createShipment(
+            @RequestBody CreateShipmentRequest request){
         ShipmentResponse response = shipmentService.createShipment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PatchMapping("/{id}/assign-driver")
-    public ResponseEntity<ShipmentResponse> assignDriver(@PathVariable("id") UUID shipmentId,
-                                                         @RequestBody Map<String, UUID> requestBody){
+    public ResponseEntity<ShipmentResponse> assignDriver(
+            @PathVariable("id") UUID shipmentId,
+            @RequestBody Map<String, UUID> requestBody){
         UUID driverId = requestBody.get("driverId");
         if (driverId == null) {
             throw new IllegalArgumentException("Driver ID tidak boleh kosong!");
