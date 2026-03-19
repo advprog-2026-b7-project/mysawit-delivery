@@ -11,5 +11,6 @@ import java.util.UUID;
 public interface ShipmentService {
     ShipmentResponse createShipment(CreateShipmentRequest request);
     ShipmentResponse assignDriver(UUID shipmentId, UUID driverId);
-    ShipmentResponse partialRejectShipment(UUID shipmentId, BigDecimal acceptedWeight, String reason);
+    ShipmentResponse partialRejectShipment(
+            UUID shipmentId, BigDecimal acceptedWeight, String reason);
 }

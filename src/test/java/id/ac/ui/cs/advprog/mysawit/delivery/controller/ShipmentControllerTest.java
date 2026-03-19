@@ -68,11 +68,13 @@ public class ShipmentControllerTest {
         request.setMandorId(mandorId);
         request.setTotalWeightKg(new BigDecimal("350.00"));
 
-        when(shipmentService.createShipment(any(CreateShipmentRequest.class))).thenReturn(dummyResponse);
+        // Dienter sebelum .thenReturn agar < 100 karakter
+        when(shipmentService.createShipment(any(CreateShipmentRequest.class)))
+                .thenReturn(dummyResponse);
 
         mockMvc.perform(post("/deliveries")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(shipmentId.toString()))
                 .andExpect(jsonPath("$.plantationId").value(plantationId.toString()))
@@ -81,34 +83,41 @@ public class ShipmentControllerTest {
     }
 
     @Test
-    void testCreateShipmentFailedWeightExceededLimit() throws Exception{
+    void testCreateShipmentFailedWeightExceededLimit() throws Exception {
         CreateShipmentRequest request = new CreateShipmentRequest();
         request.setPlantationId(plantationId);
         request.setMandorId(mandorId);
         request.setTotalWeightKg(new BigDecimal("500.00"));
 
         when(shipmentService.createShipment(any(CreateShipmentRequest.class)))
-                .thenThrow(new IllegalArgumentException("Berat muatan tidak boleh melebihi 400 kg!"));
+                .thenThrow(new IllegalArgumentException(
+                        "Berat muatan tidak boleh melebihi 400 kg!"));
 
         mockMvc.perform(post("/deliveries")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(result -> assertTrue(result.getResolvedException() instanceof IllegalArgumentException))
-                .andExpect(result -> assertEquals("Berat muatan tidak boleh melebihi 400 kg!", result.getResolvedException().getMessage()));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                // Dienter dan dipecah ke bawah
+                .andExpect(result -> assertTrue(
+                        result.getResolvedException() instanceof IllegalArgumentException))
+                .andExpect(result -> assertEquals(
+                        "Berat muatan tidak boleh melebihi 400 kg!",
+                        result.getResolvedException().getMessage()));
     }
 
     @Test
     void testAssignDriverSuccess() throws Exception {
         dummyResponse.setDriverId(driverId);
-        when(shipmentService.assignDriver(any(UUID.class), any(UUID.class))).thenReturn(dummyResponse);
+
+        // Dienter sebelum .thenReturn
+        when(shipmentService.assignDriver(any(UUID.class), any(UUID.class)))
+                .thenReturn(dummyResponse);
 
         Map<String, UUID> requestBody = new HashMap<>();
         requestBody.put("driverId", driverId);
 
         mockMvc.perform(patch("/deliveries/{id}/assign-driver", shipmentId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestBody)))
-
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestBody)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(shipmentId.toString()))
                 .andExpect(jsonPath("$.driverId").value(driverId.toString()));
@@ -121,9 +130,11 @@ public class ShipmentControllerTest {
         mockMvc.perform(patch("/deliveries/{id}/assign-driver", shipmentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestBody)))
-
-
-                .andExpect(result -> assertTrue(result.getResolvedException() instanceof IllegalArgumentException))
-                .andExpect(result -> assertEquals("Driver ID tidak boleh kosong!", result.getResolvedException().getMessage()));
+                // Dienter dan dipecah ke bawah
+                .andExpect(result -> assertTrue(
+                        result.getResolvedException() instanceof IllegalArgumentException))
+                .andExpect(result -> assertEquals(
+                        "Driver ID tidak boleh kosong!",
+                        result.getResolvedException().getMessage()));
     }
 }
