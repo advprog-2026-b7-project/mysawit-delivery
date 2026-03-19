@@ -12,7 +12,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/deliveries")
-@CrossOrigin(origins = "http://localhost:3000")
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
