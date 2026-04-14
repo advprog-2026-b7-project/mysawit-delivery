@@ -12,4 +12,8 @@ class MysawitDeliveryApplicationTests {
     void contextLoads() {
     }
 
+    @Test
+    void mainRuns() {
+        MysawitDeliveryApplication.main(new String[]{});
+    }
 }
