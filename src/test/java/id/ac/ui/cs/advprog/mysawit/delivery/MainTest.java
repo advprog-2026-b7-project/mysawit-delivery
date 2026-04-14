@@ -6,6 +6,7 @@ class MainTest {
 
     @Test
     void mainRuns() {
+        System.setProperty("spring.profiles.active", "test");
         MysawitDeliveryApplication.main(new String[]{});
     }
 }
