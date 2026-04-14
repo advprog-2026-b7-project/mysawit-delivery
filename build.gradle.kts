@@ -23,11 +23,31 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-web")
 
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.postgresql:postgresql")
+    implementation("org.projectlombok:lombok")
+
+    // 2. Kelompok "annotationProcessor"
+    annotationProcessor("org.projectlombok:lombok")
+
+    // 3. Kelompok "runtimeOnly"
+    runtimeOnly("org.postgresql:postgresql")
+
+    // 4. Kelompok "testImplementation" (Khusus untuk testing)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("com.h2database:h2")
+    testImplementation("org.projectlombok:lombok")
+
+    // 5. Kelompok "testAnnotationProcessor"
+    testAnnotationProcessor("org.projectlombok:lombok")
+
+    // 6. Kelompok "testRuntimeOnly"
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // Karena H2 ini buat testing, lebih tepat ditaruh di testRuntimeOnly
+    // dibanding runtimeOnly biasa agar tidak ikut ke production
+    testRuntimeOnly("com.h2database:h2")
 }
 
 tasks.withType<Test> {
