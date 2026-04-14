@@ -15,7 +15,10 @@ on:
     branches: [ "main" , "staging"]
 
 # Declare default permissions as read only.
-permissions: read-all
+permissions:
+  contents: read
+  security-events: write
+  actions: read
 
 jobs:
   analysis:
