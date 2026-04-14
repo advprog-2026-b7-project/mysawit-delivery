@@ -17,7 +17,7 @@ on:
 # Declare default permissions as read only.
 permissions:
   contents: read
-  security-events: write
+  security-events: read
   actions: read
 
 jobs:
