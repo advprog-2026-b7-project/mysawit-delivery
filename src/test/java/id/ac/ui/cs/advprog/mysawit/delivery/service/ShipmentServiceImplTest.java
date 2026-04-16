@@ -181,4 +181,90 @@ class ShipmentServiceImplTest {
         verify(shipmentRepository, never()).save(any(Shipment.class));
         verify(shipmentMapper, never()).toResponse(any(Shipment.class));
     }
+    @Test
+    void testUpdateStatusSuccessMemuatToMengirim() {
+        dummyShipment.setDriverId(driverId);
+
+        when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
+        when(shipmentRepository.save(any(Shipment.class))).thenReturn(dummyShipment);
+        when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
+
+        ShipmentResponse response = shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
+
+        assertNotNull(response);
+        assertEquals(ShipmentStatus.MENGIRIM, dummyShipment.getStatus());
+        verify(shipmentRepository, times(1)).save(dummyShipment);
+    }
+
+    @Test
+    void testUpdateStatusSuccessMengirimToTibaDiTujuan() {
+        dummyShipment.setDriverId(driverId);
+        dummyShipment.setStatus(ShipmentStatus.MENGIRIM);
+
+        when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
+        when(shipmentRepository.save(any(Shipment.class))).thenReturn(dummyShipment);
+        when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
+
+        ShipmentResponse response = shipmentService.updateStatus(shipmentId, ShipmentStatus.TIBA_DI_TUJUAN);
+
+        assertNotNull(response);
+        assertEquals(ShipmentStatus.TIBA_DI_TUJUAN, dummyShipment.getStatus());
+        verify(shipmentRepository, times(1)).save(dummyShipment);
+    }
+
+    @Test
+    void testUpdateStatusSuccessDisetujuiParsialToMengirim() {
+        dummyShipment.setDriverId(driverId);
+        dummyShipment.setStatus(ShipmentStatus.DISETUJUI_PARSIAL);
+
+        when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
+        when(shipmentRepository.save(any(Shipment.class))).thenReturn(dummyShipment);
+        when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
+
+        ShipmentResponse response = shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
+
+        assertNotNull(response);
+        assertEquals(ShipmentStatus.MENGIRIM, dummyShipment.getStatus());
+        verify(shipmentRepository, times(1)).save(dummyShipment);
+    }
+
+    @Test
+    void testUpdateStatusFailedDriverNotAssigned() {
+        // dummyShipment tidak punya driverId (null by default)
+        when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
+        });
+
+        assertEquals("Driver belum di-assign!", exception.getMessage());
+        verify(shipmentRepository, never()).save(any(Shipment.class));
+    }
+
+    @Test
+    void testUpdateStatusFailedInvalidTransition() {
+        dummyShipment.setDriverId(driverId);
+        // Status MEMUAT tidak bisa langsung ke TIBA_DI_TUJUAN
+
+        when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            shipmentService.updateStatus(shipmentId, ShipmentStatus.TIBA_DI_TUJUAN);
+        });
+
+        assertTrue(exception.getMessage().contains("Transisi status tidak valid"));
+        verify(shipmentRepository, never()).save(any(Shipment.class));
+    }
+
+    @Test
+    void testUpdateStatusFailedShipmentNotFound() {
+        when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
+        });
+
+        assertEquals("Data Pengiriman Tidak Ditemukan!", exception.getMessage());
+        verify(shipmentRepository, never()).save(any(Shipment.class));
+    }
 }
