@@ -68,7 +68,6 @@ class ShipmentControllerTest {
         request.setMandorId(mandorId);
         request.setTotalWeightKg(new BigDecimal("350.00"));
 
-        // Dienter sebelum .thenReturn agar < 100 karakter
         when(shipmentService.createShipment(any(CreateShipmentRequest.class)))
                 .thenReturn(dummyResponse);
 
@@ -96,7 +95,7 @@ class ShipmentControllerTest {
         mockMvc.perform(post("/deliveries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                // Dienter dan dipecah ke bawah
+
                 .andExpect(result -> assertTrue(
                         result.getResolvedException() instanceof IllegalArgumentException))
                 .andExpect(result -> assertEquals(
@@ -108,7 +107,6 @@ class ShipmentControllerTest {
     void testAssignDriverSuccess() throws Exception {
         dummyResponse.setDriverId(driverId);
 
-        // Dienter sebelum .thenReturn
         when(shipmentService.assignDriver(any(UUID.class), any(UUID.class)))
                 .thenReturn(dummyResponse);
 
@@ -130,11 +128,55 @@ class ShipmentControllerTest {
         mockMvc.perform(patch("/deliveries/{id}/assign-driver", shipmentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestBody)))
-                // Dienter dan dipecah ke bawah
                 .andExpect(result -> assertTrue(
                         result.getResolvedException() instanceof IllegalArgumentException))
                 .andExpect(result -> assertEquals(
                         "Driver ID tidak boleh kosong!",
+                        result.getResolvedException().getMessage()));
+    }
+    @Test
+    void testUpdateStatusSuccess() throws Exception {
+        dummyResponse.setStatus(ShipmentStatus.MENGIRIM);
+
+        when(shipmentService.updateStatus(any(UUID.class), any(ShipmentStatus.class)))
+                .thenReturn(dummyResponse);
+
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("status", "MENGIRIM");
+
+        mockMvc.perform(patch("/deliveries/{id}/status", shipmentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestBody)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("MENGIRIM"));
+    }
+
+    @Test
+    void testUpdateStatusFailedNullStatus() throws Exception {
+        Map<String, String> requestBody = new HashMap<>();
+
+        mockMvc.perform(patch("/deliveries/{id}/status", shipmentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestBody)))
+                .andExpect(result -> assertTrue(
+                        result.getResolvedException() instanceof IllegalArgumentException))
+                .andExpect(result -> assertEquals(
+                        "Status tidak boleh kosong!",
+                        result.getResolvedException().getMessage()));
+    }
+
+    @Test
+    void testUpdateStatusFailedInvalidStatusString() throws Exception {
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("status", "STATUS_TIDAK_VALID");
+
+        mockMvc.perform(patch("/deliveries/{id}/status", shipmentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestBody)))
+                .andExpect(result -> assertTrue(
+                        result.getResolvedException() instanceof IllegalArgumentException))
+                .andExpect(result -> assertEquals(
+                        "Status tidak valid!",
                         result.getResolvedException().getMessage()));
     }
 }
