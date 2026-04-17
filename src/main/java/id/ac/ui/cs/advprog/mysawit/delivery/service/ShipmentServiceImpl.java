@@ -83,7 +83,6 @@ public class ShipmentServiceImpl implements ShipmentService{
         }
         ShipmentStatus currentStatus = shipment.getStatus();
 
-        // VALIDASI TRANSISI
         if (!isValidTransition(currentStatus, newStatus)) {
             throw new IllegalStateException(
                     "Transisi status tidak valid dari " + currentStatus + " ke " + newStatus

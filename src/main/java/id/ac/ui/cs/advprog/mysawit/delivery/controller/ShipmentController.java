@@ -78,7 +78,8 @@ public class ShipmentController {
             throw new IllegalArgumentException("Alasan penolakan tidak boleh kosong!");
         }
 
-        ShipmentResponse response = shipmentService.partialRejectShipment(shipmentId, acceptedWeight, reason);
+        ShipmentResponse response = shipmentService
+                .partialRejectShipment(shipmentId, acceptedWeight, reason);
         return ResponseEntity.ok(response);
     }
 

@@ -68,7 +68,6 @@ class ShipmentControllerTest {
         request.setMandorId(mandorId);
         request.setTotalWeightKg(new BigDecimal("350.00"));
 
-        // Dienter sebelum .thenReturn agar < 100 karakter
         when(shipmentService.createShipment(any(CreateShipmentRequest.class)))
                 .thenReturn(dummyResponse);
 
@@ -96,7 +95,7 @@ class ShipmentControllerTest {
         mockMvc.perform(post("/deliveries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                // Dienter dan dipecah ke bawah
+
                 .andExpect(result -> assertTrue(
                         result.getResolvedException() instanceof IllegalArgumentException))
                 .andExpect(result -> assertEquals(
@@ -108,7 +107,6 @@ class ShipmentControllerTest {
     void testAssignDriverSuccess() throws Exception {
         dummyResponse.setDriverId(driverId);
 
-        // Dienter sebelum .thenReturn
         when(shipmentService.assignDriver(any(UUID.class), any(UUID.class)))
                 .thenReturn(dummyResponse);
 
@@ -130,7 +128,6 @@ class ShipmentControllerTest {
         mockMvc.perform(patch("/deliveries/{id}/assign-driver", shipmentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestBody)))
-                // Dienter dan dipecah ke bawah
                 .andExpect(result -> assertTrue(
                         result.getResolvedException() instanceof IllegalArgumentException))
                 .andExpect(result -> assertEquals(
