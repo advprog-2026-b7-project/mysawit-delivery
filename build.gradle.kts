@@ -1,3 +1,5 @@
+val flywayVersion = "10.10.0"
+
 plugins {
     java
     jacoco
@@ -5,7 +7,21 @@ plugins {
     id("org.springframework.boot") version "3.2.2"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.sonarqube") version "4.4.1.3373"
+    id("org.flywaydb.flyway") version "10.10.0"
 
+}
+
+flyway {
+    url = "jdbc:postgresql://localhost:5435/mysawit_delivery"
+    user = "postgres"
+    password = "postgres"
+}
+
+buildscript {
+    dependencies {
+        classpath("org.flywaydb:flyway-database-postgresql:10.10.0")
+        classpath("org.postgresql:postgresql:42.7.2")
+    }
 }
 
 group = "id.ac.ui.cs.advprog"
@@ -26,8 +42,11 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.postgresql:postgresql")
     implementation("org.projectlombok:lombok")
+    implementation("org.flywaydb:flyway-core:$flywayVersion")
+    implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion")
 
     // 2. Kelompok "annotationProcessor"
     annotationProcessor("org.projectlombok:lombok")

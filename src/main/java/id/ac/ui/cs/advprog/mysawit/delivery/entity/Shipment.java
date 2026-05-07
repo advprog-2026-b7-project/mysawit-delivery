@@ -41,6 +41,9 @@ public class Shipment {
     @Column(name = "rejected_reason", columnDefinition = "TEXT")
     private String rejectedReason;
 
+    @Column(name = "recognized_weight_kg", precision = 10, scale = 2)
+    private BigDecimal recognizedWeightKg;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

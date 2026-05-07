@@ -1,12 +1,16 @@
 package id.ac.ui.cs.advprog.mysawit.delivery;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.test.context.ActiveProfiles;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
+@ActiveProfiles("test")
 class MainTest {
 
     @Test
     void mainRuns() {
-        System.setProperty("spring.profiles.active", "test");
-        MysawitDeliveryApplication.main(new String[]{});
+        assertDoesNotThrow(() ->
+                MysawitDeliveryApplication.main(new String[]{}));
     }
 }

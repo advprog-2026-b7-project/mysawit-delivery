@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.mysawit.delivery.dto.AdminRejectRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.CreateShipmentRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.ShipmentResponse;
 import id.ac.ui.cs.advprog.mysawit.delivery.entity.ShipmentStatus;
@@ -14,7 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,8 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -134,6 +136,7 @@ class ShipmentControllerTest {
                         "Driver ID tidak boleh kosong!",
                         result.getResolvedException().getMessage()));
     }
+
     @Test
     void testUpdateStatusSuccess() throws Exception {
         dummyResponse.setStatus(ShipmentStatus.MENGIRIM);
@@ -178,5 +181,221 @@ class ShipmentControllerTest {
                 .andExpect(result -> assertEquals(
                         "Status tidak valid!",
                         result.getResolvedException().getMessage()));
+    }
+
+    // ==================== APPROVE BY MANDOR ====================
+
+    @Test
+    void testApproveByMandorSuccess() throws Exception {
+        dummyResponse.setStatus(ShipmentStatus.DISETUJUI_MANDOR);
+
+        when(shipmentService.approveByMandor(any(UUID.class))).thenReturn(dummyResponse);
+
+        mockMvc.perform(patch("/deliveries/{id}/approve-mandor", shipmentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DISETUJUI_MANDOR"));
+    }
+
+    @Test
+    void testApproveByMandorFailedWrongStatus() throws Exception {
+        when(shipmentService.approveByMandor(any(UUID.class)))
+                .thenThrow(new IllegalStateException(
+                        "Hanya pengiriman yang telah tiba yang dapat diapprove Mandor."));
+
+        mockMvc.perform(patch("/deliveries/{id}/approve-mandor", shipmentId))
+                .andExpect(result -> assertTrue(
+                        result.getResolvedException() instanceof IllegalStateException))
+                .andExpect(result -> assertEquals(
+                        "Hanya pengiriman yang telah tiba yang dapat diapprove Mandor.",
+                        result.getResolvedException().getMessage()));
+    }
+
+// ==================== REJECT BY MANDOR ====================
+
+    @Test
+    void testRejectByMandorSuccess() throws Exception {
+        dummyResponse.setStatus(ShipmentStatus.DITOLAK_MANDOR);
+
+        when(shipmentService.rejectByMandor(any(UUID.class), any(String.class)))
+                .thenReturn(dummyResponse);
+
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("reason", "Kualitas tidak memenuhi standar");
+
+        mockMvc.perform(patch("/deliveries/{id}/reject-mandor", shipmentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestBody)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DITOLAK_MANDOR"));
+    }
+
+    @Test
+    void testRejectByMandorFailedEmptyReason() throws Exception {
+        when(shipmentService.rejectByMandor(any(UUID.class), any()))
+                .thenThrow(new IllegalArgumentException("Alasan penolakan tidak boleh kosong."));
+
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("reason", "");
+
+        mockMvc.perform(patch("/deliveries/{id}/reject-mandor", shipmentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestBody)))
+                .andExpect(result -> assertTrue(
+                        result.getResolvedException() instanceof IllegalArgumentException))
+                .andExpect(result -> assertEquals(
+                        "Alasan penolakan tidak boleh kosong.",
+                        result.getResolvedException().getMessage()));
+    }
+
+// ==================== APPROVE BY ADMIN ====================
+
+    @Test
+    void testApproveByAdminSuccess() throws Exception {
+        dummyResponse.setStatus(ShipmentStatus.DISETUJUI_ADMIN);
+
+        when(shipmentService.approveByAdmin(any(UUID.class))).thenReturn(dummyResponse);
+
+        mockMvc.perform(patch("/deliveries/{id}/approve-admin", shipmentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DISETUJUI_ADMIN"));
+    }
+
+    @Test
+    void testApproveByAdminFailedWrongStatus() throws Exception {
+        when(shipmentService.approveByAdmin(any(UUID.class)))
+                .thenThrow(new IllegalStateException(
+                        "Hanya pengiriman yang telah tiba yang dapat diapprove Admin."));
+
+        mockMvc.perform(patch("/deliveries/{id}/approve-admin", shipmentId))
+                .andExpect(result -> assertTrue(
+                        result.getResolvedException() instanceof IllegalStateException))
+                .andExpect(result -> assertEquals(
+                        "Hanya pengiriman yang telah tiba yang dapat diapprove Admin.",
+                        result.getResolvedException().getMessage()));
+    }
+
+// ==================== REJECT BY ADMIN ====================
+
+    @Test
+    void testRejectByAdminFullRejectionSuccess() throws Exception {
+        dummyResponse.setStatus(ShipmentStatus.DITOLAK_ADMIN);
+
+        when(shipmentService.rejectByAdmin(any(UUID.class), any(AdminRejectRequest.class)))
+                .thenReturn(dummyResponse);
+
+        AdminRejectRequest request = new AdminRejectRequest();
+        request.setPartial(false);
+        request.setReason("Sawit tidak memenuhi standar pabrik");
+
+        mockMvc.perform(patch("/deliveries/{id}/reject-admin", shipmentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DITOLAK_ADMIN"));
+    }
+
+    @Test
+    void testRejectByAdminPartialSuccess() throws Exception {
+        dummyResponse.setStatus(ShipmentStatus.DISETUJUI_PARSIAL);
+
+        when(shipmentService.rejectByAdmin(any(UUID.class), any(AdminRejectRequest.class)))
+                .thenReturn(dummyResponse);
+
+        AdminRejectRequest request = new AdminRejectRequest();
+        request.setPartial(true);
+        request.setRecognizedKg(new BigDecimal("200.00"));
+        request.setReason("Sebagian sawit rusak");
+
+        mockMvc.perform(patch("/deliveries/{id}/reject-admin", shipmentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DISETUJUI_PARSIAL"));
+    }
+
+// ==================== GET ENDPOINTS ====================
+
+    @Test
+    void testGetAssignedDeliveriesForDriver() throws Exception {
+        when(shipmentService.getAssignedDeliveriesForDriver(any(UUID.class)))
+                .thenReturn(List.of(dummyResponse));
+
+        mockMvc.perform(get("/deliveries/driver/{driverId}/assigned", driverId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(shipmentId.toString()));
+    }
+
+    @Test
+    void testGetAssignedDeliveriesForDriverEmpty() throws Exception {
+        when(shipmentService.getAssignedDeliveriesForDriver(any(UUID.class)))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/deliveries/driver/{driverId}/assigned", driverId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void testGetDriverHistory() throws Exception {
+        when(shipmentService.getDriverHistory(
+                any(UUID.class),
+                any(LocalDateTime.class),
+                any(LocalDateTime.class)))
+                .thenReturn(List.of(dummyResponse));
+
+        mockMvc.perform(get("/deliveries/driver/{driverId}/history", driverId)
+                        .param("startDate", "2025-01-01T00:00:00")
+                        .param("endDate", "2025-12-31T23:59:59"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(shipmentId.toString()));
+    }
+
+    @Test
+    void testGetOngoingDeliveriesForMandor() throws Exception {
+        when(shipmentService.getOngoingDeliveriesForMandor(any(UUID.class)))
+                .thenReturn(List.of(dummyResponse));
+
+        mockMvc.perform(get("/deliveries/mandor/{mandorId}/ongoing", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(shipmentId.toString()));
+    }
+
+    @Test
+    void testGetOngoingDeliveriesForMandorEmpty() throws Exception {
+        when(shipmentService.getOngoingDeliveriesForMandor(any(UUID.class)))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/deliveries/mandor/{mandorId}/ongoing", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void testGetSpecificDriverDeliveries() throws Exception {
+        when(shipmentService.getSpecificDriverDeliveries(any(UUID.class)))
+                .thenReturn(List.of(dummyResponse));
+
+        mockMvc.perform(get("/deliveries/driver/{driverId}", driverId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(shipmentId.toString()));
+    }
+
+    @Test
+    void testGetSpecificMandorDeliveries() throws Exception {
+        when(shipmentService.getSpecificMandorDeliveries(any(UUID.class)))
+                .thenReturn(List.of(dummyResponse));
+
+        mockMvc.perform(get("/deliveries/mandor/{mandorId}", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(shipmentId.toString()));
+    }
+
+    @Test
+    void testGetAllShipments() throws Exception {
+        when(shipmentService.getAllShipments()).thenReturn(List.of(dummyResponse));
+
+        mockMvc.perform(get("/deliveries"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(shipmentId.toString()));
     }
 }
