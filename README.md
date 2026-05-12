@@ -55,3 +55,6 @@ Entity pada service ini sudah disejajarkan dengan skema tim untuk kebutuhan oper
 - `harvest_id` (UUID, Wajib diisi)
 
 Fitur update shipments juga sudah menerapkan rule bahwa `code` tidak boleh diubah.
+
+<img width="2339" height="1954" alt="Screenshot 2026-05-12 202101" src="https://github.com/user-attachments/assets/d1d14a2d-0a11-4b6b-aa2b-166e49d1add4" />
+<img width="2488" height="6562" alt="mysawit-delivery-codediagram2" src="https://github.com/user-attachments/assets/61af84e6-f640-4b0e-a234-67e77a16e761" />
