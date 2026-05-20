@@ -10,21 +10,35 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ShipmentService {
-    ShipmentResponse createShipment(CreateShipmentRequest request);
+    ShipmentResponse createShipment(CreateShipmentRequest request, String authHeader);
+
+    ;
+
     ShipmentResponse assignDriver(UUID shipmentId, UUID driverId);
+
     ShipmentResponse updateStatus(UUID shipmentId, ShipmentStatus newStatus);
+
     List<ShipmentResponse> getAllShipments();
+
     ShipmentResponse approveByMandor(UUID id);
+
     ShipmentResponse rejectByMandor(UUID id, String reason);
+
     ShipmentResponse approveByAdmin(UUID id);
+
     ShipmentResponse rejectByAdmin(UUID id, AdminRejectRequest request);
+
     List<ShipmentResponse> getAssignedDeliveriesForDriver(UUID driverId);
+
     List<ShipmentResponse> getDriverHistory(
             UUID driverId,
             LocalDateTime startDate,
             LocalDateTime endDate);
+
     List<ShipmentResponse> getOngoingDeliveriesForMandor(UUID mandorId);
+
     List<ShipmentResponse> getSpecificDriverDeliveries(UUID driverId);
+
     List<ShipmentResponse> getSpecificMandorDeliveries(UUID mandorId);
 
 }

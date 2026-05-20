@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.service;
 
+import id.ac.ui.cs.advprog.mysawit.delivery.client.HarvestClient;
+import id.ac.ui.cs.advprog.mysawit.delivery.client.PlantationClient;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.AdminRejectRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.CreateShipmentRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.ShipmentResponse;
@@ -27,18 +29,50 @@ public class ShipmentServiceImpl implements ShipmentService {
     private final ShipmentRepository shipmentRepository;
     private final WeightValidator weightValidator;
     private final ShipmentMapper shipmentMapper;
+    private final HarvestClient harvestClient;
+    private final PlantationClient plantationClient;
 
     @Override
-    public ShipmentResponse createShipment(CreateShipmentRequest request) {
+    @Transactional
+    public ShipmentResponse createShipment(CreateShipmentRequest request, String authHeader) {
+        BigDecimal totalAvailableWeight = harvestClient.getTotalApprovedWeight(authHeader);
+
+        // 2. Validasi: Apakah berat yang mau dikirim melebihi total panen APPROVED yang ada di kebun?
+        if (request.getTotalWeightKg().compareTo(totalAvailableWeight) > 0) {
+            throw new IllegalArgumentException(
+                    "Berat pengiriman (" + request.getTotalWeightKg() +
+                            " kg) melebihi total hasil panen yang disetujui (" +
+                            totalAvailableWeight + " kg)!"
+            );
+        }
+
+        // 3. Validasi aturan bisnis maksimal berat truk (misal aturan 400 Kg)
         weightValidator.validate(request.getTotalWeightKg());
 
+        // 4. OTOMATISASI: Ambil data kebun (Plantation) & Mandor berdasarkan token JWT
+        // (Asumsi PlantationClient kamu sudah di-inject dan memiliki method ini)
+        UUID plantationId = plantationClient.getPlantationIdByMandor(authHeader);
+        UUID mandorId = plantationClient.getMandorIdFromToken(authHeader);
+
+        // 5. Validasi Tambahan: Pastikan Driver yang dipilih memang bertugas di kebun tersebut
+        boolean isDriverValid =
+                plantationClient.isDriverAssignedToPlantation(authHeader, plantationId,
+                        request.getDriverId());
+        if (!isDriverValid) {
+            throw new IllegalStateException("Driver yang dipilih tidak terdaftar di kebun Anda!");
+        }
+
+        // 6. Bangun objek Shipment dengan data yang sudah tervalidasi aman
         Shipment shipment = Shipment.builder()
-                .plantationId(request.getPlantationId())
-                .mandorId(request.getMandorId())
+                .plantationId(plantationId) // Set otomatis dari backend via JWT!
+                .mandorId(mandorId)         // Set otomatis dari backend via JWT!
+                .driverId(
+                        request.getDriverId()) // Diambil dari dropdown yang dipilih mandor di frontend
                 .totalWeightKg(request.getTotalWeightKg())
                 .status(ShipmentStatus.MEMUAT)
                 .build();
 
+        // 7. Simpan ke database dan kembalikan response
         Shipment savedShipment = shipmentRepository.save(shipment);
         return shipmentMapper.toResponse(savedShipment);
     }

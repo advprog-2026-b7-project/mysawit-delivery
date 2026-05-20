@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.service;
 
+import id.ac.ui.cs.advprog.mysawit.delivery.client.HarvestClient;
+import id.ac.ui.cs.advprog.mysawit.delivery.client.PlantationClient;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.AdminRejectRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.CreateShipmentRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.ShipmentResponse;
@@ -28,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
 class ShipmentServiceImplTest {
+
     @Mock
     private ShipmentRepository shipmentRepository;
 
@@ -37,8 +40,14 @@ class ShipmentServiceImplTest {
     @Mock
     private ShipmentMapper shipmentMapper;
 
+    @Mock
+    private HarvestClient harvestClient;
+
+    @Mock
+    private PlantationClient plantationClient;
+
     @InjectMocks
-    ShipmentServiceImpl shipmentService;
+    private ShipmentServiceImpl shipmentService;
 
     private UUID shipmentId;
     private UUID plantationId;
@@ -70,46 +79,70 @@ class ShipmentServiceImplTest {
                 .build();
     }
 
+    // ==================== CREATE SHIPMENT TESTS ====================
+
     @Test
-    void testCreateShipmentSuccess() {
+    void testCreateShipment_Success() {
         CreateShipmentRequest request = new CreateShipmentRequest();
-        request.setPlantationId(plantationId);
-        request.setMandorId(mandorId);
-        request.setTotalWeightKg(new BigDecimal("350.00"));
+        request.setDriverId(driverId);
+        request.setTotalWeightKg(new BigDecimal("100.00"));
+        String token = "Bearer dummyToken";
 
-        doNothing().when(weightValidator).validate(any(BigDecimal.class));
-        when(shipmentRepository.save(any(Shipment.class))).thenReturn(dummyShipment);
-        when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
+        doNothing().when(weightValidator).validate(any());
+        when(harvestClient.getTotalApprovedWeight(token)).thenReturn(new BigDecimal("500.00"));
+        when(plantationClient.getPlantationIdByMandor(token)).thenReturn(plantationId);
+        when(plantationClient.getMandorIdFromToken(token)).thenReturn(mandorId);
+        when(plantationClient.isDriverAssignedToPlantation(token, plantationId,
+                driverId)).thenReturn(true);
 
-        ShipmentResponse response = shipmentService.createShipment(request);
+        Shipment shipment = new Shipment();
+        when(shipmentRepository.save(any(Shipment.class))).thenReturn(shipment);
+        when(shipmentMapper.toResponse(any())).thenReturn(dummyResponse);
+
+        ShipmentResponse response = shipmentService.createShipment(request, token);
 
         assertNotNull(response);
-        assertEquals(plantationId, response.getPlantationId());
-        assertEquals(new BigDecimal("350.00"), response.getTotalWeightKg());
-        assertEquals(ShipmentStatus.MEMUAT, response.getStatus());
-
-        verify(weightValidator, times(1)).validate(any(BigDecimal.class));
         verify(shipmentRepository, times(1)).save(any(Shipment.class));
-        verify(shipmentMapper, times(1)).toResponse(any(Shipment.class));
     }
 
     @Test
-    void testCreateShipmentFailedValidation() {
+    void testCreateShipment_FailedWeightExceeded() {
         CreateShipmentRequest request = new CreateShipmentRequest();
-        request.setTotalWeightKg(new BigDecimal("450.00"));
+        request.setDriverId(driverId);
+        request.setTotalWeightKg(new BigDecimal("600.00"));
+        String token = "Bearer dummyToken";
 
-        doThrow(new IllegalArgumentException("Berat muatan tidak valid!"))
-                .when(weightValidator).validate(any(BigDecimal.class));
+        when(harvestClient.getTotalApprovedWeight(token)).thenReturn(new BigDecimal("500.00"));
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            shipmentService.createShipment(request);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                shipmentService.createShipment(request, token)
+        );
 
-        assertEquals("Berat muatan tidak valid!", exception.getMessage());
-
+        assertTrue(exception.getMessage().contains("melebihi total hasil panen"));
         verify(shipmentRepository, never()).save(any(Shipment.class));
-        verify(shipmentMapper, never()).toResponse(any(Shipment.class));
     }
+
+    @Test
+    void testCreateShipment_FailedDriverNotAssignedToPlantation() {
+        CreateShipmentRequest request = new CreateShipmentRequest();
+        request.setDriverId(driverId);
+        request.setTotalWeightKg(new BigDecimal("100.00"));
+        String token = "Bearer dummyToken";
+
+        when(harvestClient.getTotalApprovedWeight(token)).thenReturn(new BigDecimal("500.00"));
+        when(plantationClient.getPlantationIdByMandor(token)).thenReturn(plantationId);
+        when(plantationClient.isDriverAssignedToPlantation(token, plantationId,
+                driverId)).thenReturn(false);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
+                shipmentService.createShipment(request, token)
+        );
+
+        assertTrue(exception.getMessage().contains("tidak terdaftar di kebun"));
+        verify(shipmentRepository, never()).save(any(Shipment.class));
+    }
+
+    // ==================== ASSIGN DRIVER TESTS ====================
 
     @Test
     void testAssignDriverSuccess() {
@@ -120,7 +153,6 @@ class ShipmentServiceImplTest {
         ShipmentResponse response = shipmentService.assignDriver(shipmentId, driverId);
 
         assertNotNull(response);
-
         verify(shipmentRepository, times(1)).findById(shipmentId);
         verify(shipmentRepository, times(1)).save(dummyShipment);
         verify(shipmentMapper, times(1)).toResponse(dummyShipment);
@@ -130,14 +162,16 @@ class ShipmentServiceImplTest {
     void testAssignDriverFailedShipmentNotFound() {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            shipmentService.assignDriver(shipmentId, driverId);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                shipmentService.assignDriver(shipmentId, driverId)
+        );
 
         assertEquals("Data Pengiriman Tidak Ditemukan!", exception.getMessage());
         verify(shipmentRepository, never()).save(any(Shipment.class));
         verify(shipmentMapper, never()).toResponse(any(Shipment.class));
     }
+
+    // ==================== UPDATE STATUS TESTS ====================
 
     @Test
     void testUpdateStatusSuccessMemuatToMengirim() {
@@ -147,8 +181,8 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.save(any(Shipment.class))).thenReturn(dummyShipment);
         when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
 
-        ShipmentResponse response = shipmentService
-                .updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
+        ShipmentResponse response =
+                shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
 
         assertNotNull(response);
         assertEquals(ShipmentStatus.MENGIRIM, dummyShipment.getStatus());
@@ -164,8 +198,8 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.save(any(Shipment.class))).thenReturn(dummyShipment);
         when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
 
-        ShipmentResponse response = shipmentService
-                .updateStatus(shipmentId, ShipmentStatus.TIBA_DI_TUJUAN);
+        ShipmentResponse response =
+                shipmentService.updateStatus(shipmentId, ShipmentStatus.TIBA_DI_TUJUAN);
 
         assertNotNull(response);
         assertEquals(ShipmentStatus.TIBA_DI_TUJUAN, dummyShipment.getStatus());
@@ -181,8 +215,8 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.save(any(Shipment.class))).thenReturn(dummyShipment);
         when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
 
-        ShipmentResponse response = shipmentService
-                .updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
+        ShipmentResponse response =
+                shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
 
         assertNotNull(response);
         assertEquals(ShipmentStatus.MENGIRIM, dummyShipment.getStatus());
@@ -193,9 +227,9 @@ class ShipmentServiceImplTest {
     void testUpdateStatusFailedDriverNotAssigned() {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
-            shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
-        });
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
+                shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM)
+        );
 
         assertEquals("Driver belum di-assign!", exception.getMessage());
         verify(shipmentRepository, never()).save(any(Shipment.class));
@@ -207,9 +241,9 @@ class ShipmentServiceImplTest {
 
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
-            shipmentService.updateStatus(shipmentId, ShipmentStatus.TIBA_DI_TUJUAN);
-        });
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
+                shipmentService.updateStatus(shipmentId, ShipmentStatus.TIBA_DI_TUJUAN)
+        );
 
         assertTrue(exception.getMessage().contains("Transisi status tidak valid"));
         verify(shipmentRepository, never()).save(any(Shipment.class));
@@ -219,9 +253,9 @@ class ShipmentServiceImplTest {
     void testUpdateStatusFailedShipmentNotFound() {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                shipmentService.updateStatus(shipmentId, ShipmentStatus.MENGIRIM)
+        );
 
         assertEquals("Data Pengiriman Tidak Ditemukan!", exception.getMessage());
         verify(shipmentRepository, never()).save(any(Shipment.class));
@@ -251,10 +285,10 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-                shipmentService.approveByMandor(shipmentId));
+                shipmentService.approveByMandor(shipmentId)
+        );
 
-        assertEquals(
-                "Hanya pengiriman yang telah tiba yang dapat diapprove Mandor.",
+        assertEquals("Hanya pengiriman yang telah tiba yang dapat diapprove Mandor.",
                 exception.getMessage());
         verify(shipmentRepository, never()).save(any());
     }
@@ -264,12 +298,13 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.empty());
 
         assertThrows(NoSuchElementException.class, () ->
-                shipmentService.approveByMandor(shipmentId));
+                shipmentService.approveByMandor(shipmentId)
+        );
 
         verify(shipmentRepository, never()).save(any());
     }
 
-// ==================== REJECT BY MANDOR ====================
+    // ==================== REJECT BY MANDOR ====================
 
     @Test
     void testRejectByMandorSuccess() {
@@ -295,10 +330,10 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-                shipmentService.rejectByMandor(shipmentId, "alasan"));
+                shipmentService.rejectByMandor(shipmentId, "alasan")
+        );
 
-        assertEquals(
-                "Hanya pengiriman yang telah tiba yang dapat ditolak Mandor.",
+        assertEquals("Hanya pengiriman yang telah tiba yang dapat ditolak Mandor.",
                 exception.getMessage());
         verify(shipmentRepository, never()).save(any());
     }
@@ -310,7 +345,8 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                shipmentService.rejectByMandor(shipmentId, ""));
+                shipmentService.rejectByMandor(shipmentId, "")
+        );
 
         assertEquals("Alasan penolakan tidak boleh kosong.", exception.getMessage());
         verify(shipmentRepository, never()).save(any());
@@ -323,7 +359,8 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
         assertThrows(IllegalArgumentException.class, () ->
-                shipmentService.rejectByMandor(shipmentId, null));
+                shipmentService.rejectByMandor(shipmentId, null)
+        );
 
         verify(shipmentRepository, never()).save(any());
     }
@@ -333,12 +370,13 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.empty());
 
         assertThrows(NoSuchElementException.class, () ->
-                shipmentService.rejectByMandor(shipmentId, "alasan"));
+                shipmentService.rejectByMandor(shipmentId, "alasan")
+        );
 
         verify(shipmentRepository, never()).save(any());
     }
 
-// ==================== APPROVE BY ADMIN ====================
+    // ==================== APPROVE BY ADMIN ====================
 
     @Test
     void testApproveByAdminSuccess() {
@@ -362,7 +400,8 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-                shipmentService.approveByAdmin(shipmentId));
+                shipmentService.approveByAdmin(shipmentId)
+        );
 
         assertEquals("Hanya pengiriman yang telah tiba yang dapat diapprove Admin.",
                 exception.getMessage());
@@ -374,12 +413,13 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.empty());
 
         assertThrows(NoSuchElementException.class, () ->
-                shipmentService.approveByAdmin(shipmentId));
+                shipmentService.approveByAdmin(shipmentId)
+        );
 
         verify(shipmentRepository, never()).save(any());
     }
 
-// ==================== REJECT BY ADMIN ====================
+    // ==================== REJECT BY ADMIN ====================
 
     @Test
     void testRejectByAdminFullRejectionSuccess() {
@@ -434,7 +474,8 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                shipmentService.rejectByAdmin(shipmentId, request));
+                shipmentService.rejectByAdmin(shipmentId, request)
+        );
 
         assertEquals("Berat yang diakui harus lebih dari 0 untuk penolakan parsial.",
                 exception.getMessage());
@@ -452,7 +493,8 @@ class ShipmentServiceImplTest {
         when(shipmentRepository.findById(shipmentId)).thenReturn(Optional.of(dummyShipment));
 
         assertThrows(IllegalStateException.class, () ->
-                shipmentService.rejectByAdmin(shipmentId, request));
+                shipmentService.rejectByAdmin(shipmentId, request)
+        );
 
         verify(shipmentRepository, never()).save(any());
     }
@@ -463,24 +505,24 @@ class ShipmentServiceImplTest {
 
         AdminRejectRequest request = new AdminRejectRequest();
         assertThrows(NoSuchElementException.class, () ->
-                shipmentService.rejectByAdmin(shipmentId, request));
+                shipmentService.rejectByAdmin(shipmentId, request)
+        );
     }
 
-// ==================== QUERY METHODS ====================
+    // ==================== QUERY METHODS ====================
 
     @Test
     void testGetAssignedDeliveriesForDriver() {
         List<Shipment> shipments = List.of(dummyShipment);
 
-        when(shipmentRepository.findByDriverIdAndStatusIn(eq(driverId), anyList()))
-                .thenReturn(shipments);
+        when(shipmentRepository.findByDriverIdAndStatusIn(eq(driverId), anyList())).thenReturn(
+                shipments);
         when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
 
         List<ShipmentResponse> result = shipmentService.getAssignedDeliveriesForDriver(driverId);
 
         assertEquals(1, result.size());
-        verify(shipmentRepository, times(1))
-                .findByDriverIdAndStatusIn(eq(driverId), anyList());
+        verify(shipmentRepository, times(1)).findByDriverIdAndStatusIn(eq(driverId), anyList());
     }
 
     @Test
@@ -495,23 +537,21 @@ class ShipmentServiceImplTest {
         List<ShipmentResponse> result = shipmentService.getDriverHistory(driverId, start, end);
 
         assertEquals(1, result.size());
-        verify(shipmentRepository, times(1))
-                .findDriverHistory(driverId, start, end);
+        verify(shipmentRepository, times(1)).findDriverHistory(driverId, start, end);
     }
 
     @Test
     void testGetOngoingDeliveriesForMandor() {
         List<Shipment> shipments = List.of(dummyShipment);
 
-        when(shipmentRepository.findByMandorIdAndStatusIn(eq(mandorId), anyList()))
-                .thenReturn(shipments);
+        when(shipmentRepository.findByMandorIdAndStatusIn(eq(mandorId), anyList())).thenReturn(
+                shipments);
         when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
 
         List<ShipmentResponse> result = shipmentService.getOngoingDeliveriesForMandor(mandorId);
 
         assertEquals(1, result.size());
-        verify(shipmentRepository, times(1))
-                .findByMandorIdAndStatusIn(eq(mandorId), anyList());
+        verify(shipmentRepository, times(1)).findByMandorIdAndStatusIn(eq(mandorId), anyList());
     }
 
     @Test
@@ -524,8 +564,7 @@ class ShipmentServiceImplTest {
         List<ShipmentResponse> result = shipmentService.getSpecificDriverDeliveries(driverId);
 
         assertEquals(1, result.size());
-        verify(shipmentRepository, times(1))
-                .findByDriverId(driverId);
+        verify(shipmentRepository, times(1)).findByDriverId(driverId);
     }
 
     @Test
@@ -538,7 +577,6 @@ class ShipmentServiceImplTest {
         List<ShipmentResponse> result = shipmentService.getSpecificMandorDeliveries(mandorId);
 
         assertEquals(1, result.size());
-        verify(shipmentRepository, times(1))
-                .findByMandorId(mandorId);
+        verify(shipmentRepository, times(1)).findByMandorId(mandorId);
     }
 }

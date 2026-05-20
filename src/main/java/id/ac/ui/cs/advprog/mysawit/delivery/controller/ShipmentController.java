@@ -3,7 +3,9 @@ package id.ac.ui.cs.advprog.mysawit.delivery.controller;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.AdminRejectRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.CreateShipmentRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.ShipmentResponse;
+import id.ac.ui.cs.advprog.mysawit.delivery.dto.response.ApiSuccessResponse;
 import id.ac.ui.cs.advprog.mysawit.delivery.service.ShipmentService;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,16 +28,20 @@ public class ShipmentController {
     }
 
     @PostMapping
-    public ResponseEntity<ShipmentResponse> createShipment(
-            @RequestBody CreateShipmentRequest request){
-        ShipmentResponse response = shipmentService.createShipment(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<ApiSuccessResponse<ShipmentResponse>> createShipment(
+            @RequestHeader(value = "Authorization") String authHeader,
+            // Tangkap token JWT dari header
+            @Valid @RequestBody CreateShipmentRequest request
+    ) {
+        // Teruskan authHeader ke dalam method service
+        ShipmentResponse data = shipmentService.createShipment(request, authHeader);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ApiSuccessResponse<>(data));
     }
 
     @PatchMapping("/{id}/assign-driver")
     public ResponseEntity<ShipmentResponse> assignDriver(
             @PathVariable("id") UUID shipmentId,
-            @RequestBody Map<String, UUID> requestBody){
+            @RequestBody Map<String, UUID> requestBody) {
         UUID driverId = requestBody.get("driverId");
         if (driverId == null) {
             throw new IllegalArgumentException("Driver ID tidak boleh kosong!");

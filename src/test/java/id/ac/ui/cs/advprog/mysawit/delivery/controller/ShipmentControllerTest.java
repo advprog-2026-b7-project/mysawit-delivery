@@ -9,6 +9,7 @@ import id.ac.ui.cs.advprog.mysawit.delivery.service.ShipmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -24,12 +25,14 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ShipmentController.class)
+@AutoConfigureMockMvc(addFilters = false) // <-- Bypass filter keamanan tanpa butuh library tambahan
 class ShipmentControllerTest {
 
     @Autowired
@@ -70,17 +73,21 @@ class ShipmentControllerTest {
         request.setMandorId(mandorId);
         request.setTotalWeightKg(new BigDecimal("350.00"));
 
-        when(shipmentService.createShipment(any(CreateShipmentRequest.class)))
+        when(shipmentService.createShipment(any(CreateShipmentRequest.class), anyString()))
                 .thenReturn(dummyResponse);
 
         mockMvc.perform(post("/deliveries")
+                        .header("Authorization", "Bearer dummy-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(shipmentId.toString()))
-                .andExpect(jsonPath("$.plantationId").value(plantationId.toString()))
-                .andExpect(jsonPath("$.totalWeightKg").value(350.00))
-                .andExpect(jsonPath("$.status").value("MEMUAT"));
+                .andExpect(jsonPath("$.data.id").value(
+                        shipmentId.toString()))          // <-- Tambah .data
+                .andExpect(jsonPath("$.data.plantationId").value(
+                        plantationId.toString())) // <-- Tambah .data
+                .andExpect(jsonPath("$.data.totalWeightKg").value(
+                        350.00))              // <-- Tambah .data
+                .andExpect(jsonPath("$.data.status").value("MEMUAT"));
     }
 
     @Test
@@ -90,14 +97,14 @@ class ShipmentControllerTest {
         request.setMandorId(mandorId);
         request.setTotalWeightKg(new BigDecimal("500.00"));
 
-        when(shipmentService.createShipment(any(CreateShipmentRequest.class)))
+        when(shipmentService.createShipment(any(CreateShipmentRequest.class), anyString()))
                 .thenThrow(new IllegalArgumentException(
                         "Berat muatan tidak boleh melebihi 400 kg!"));
 
         mockMvc.perform(post("/deliveries")
+                        .header("Authorization", "Bearer dummy-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-
                 .andExpect(result -> assertTrue(
                         result.getResolvedException() instanceof IllegalArgumentException))
                 .andExpect(result -> assertEquals(
@@ -210,7 +217,7 @@ class ShipmentControllerTest {
                         result.getResolvedException().getMessage()));
     }
 
-// ==================== REJECT BY MANDOR ====================
+    // ==================== REJECT BY MANDOR ====================
 
     @Test
     void testRejectByMandorSuccess() throws Exception {
@@ -247,7 +254,7 @@ class ShipmentControllerTest {
                         result.getResolvedException().getMessage()));
     }
 
-// ==================== APPROVE BY ADMIN ====================
+    // ==================== APPROVE BY ADMIN ====================
 
     @Test
     void testApproveByAdminSuccess() throws Exception {
@@ -274,7 +281,7 @@ class ShipmentControllerTest {
                         result.getResolvedException().getMessage()));
     }
 
-// ==================== REJECT BY ADMIN ====================
+    // ==================== REJECT BY ADMIN ====================
 
     @Test
     void testRejectByAdminFullRejectionSuccess() throws Exception {
@@ -313,7 +320,7 @@ class ShipmentControllerTest {
                 .andExpect(jsonPath("$.status").value("DISETUJUI_PARSIAL"));
     }
 
-// ==================== GET ENDPOINTS ====================
+    // ==================== GET ENDPOINTS ====================
 
     @Test
     void testGetAssignedDeliveriesForDriver() throws Exception {
