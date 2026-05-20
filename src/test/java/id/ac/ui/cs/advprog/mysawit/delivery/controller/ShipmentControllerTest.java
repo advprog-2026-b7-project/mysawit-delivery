@@ -14,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,9 +31,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 
-@WebMvcTest(ShipmentController.class)
-@AutoConfigureMockMvc(addFilters = false) // <-- Bypass filter keamanan tanpa butuh library tambahan
+@WebMvcTest(
+        controllers = ShipmentController.class,
+        excludeAutoConfiguration = {SecurityAutoConfiguration.class}
+)
+@WithMockUser
 class ShipmentControllerTest {
 
     @Autowired
