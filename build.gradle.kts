@@ -39,7 +39,6 @@ repositories {
 }
 
 dependencies {
-
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -47,26 +46,19 @@ dependencies {
     implementation("org.projectlombok:lombok")
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion")
-
-    // 2. Kelompok "annotationProcessor"
     annotationProcessor("org.projectlombok:lombok")
-
-    // 3. Kelompok "runtimeOnly"
     runtimeOnly("org.postgresql:postgresql")
-
-    // 4. Kelompok "testImplementation" (Khusus untuk testing)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("com.h2database:h2")
     testImplementation("org.projectlombok:lombok")
-
-    // 5. Kelompok "testAnnotationProcessor"
     testAnnotationProcessor("org.projectlombok:lombok")
-
-    // 6. Kelompok "testRuntimeOnly"
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    // Karena H2 ini buat testing, lebih tepat ditaruh di testRuntimeOnly
-    // dibanding runtimeOnly biasa agar tidak ikut ke production
     testRuntimeOnly("com.h2database:h2")
+    implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    testImplementation("org.springframework.security:spring-security-test")
 }
 
 tasks.withType<Test> {

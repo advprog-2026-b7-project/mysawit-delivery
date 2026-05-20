@@ -36,6 +36,7 @@ public class Shipment {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
+    @Builder.Default
     private ShipmentStatus status = ShipmentStatus.MEMUAT;
 
     @Column(name = "rejected_reason", columnDefinition = "TEXT")
