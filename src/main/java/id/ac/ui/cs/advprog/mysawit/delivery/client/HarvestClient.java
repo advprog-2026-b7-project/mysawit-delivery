@@ -34,19 +34,16 @@ public class HarvestClient {
         // Memanggil API Harvest bawaan dengan menyaring status APPROVED
         String url = UriComponentsBuilder.fromHttpUrl(harvestServiceUrl + "/api/v1/harvests")
                 .queryParam("status", "APPROVED")
-                .queryParam("size", 100) // Pastikan menarik semua record halaman pertama
+                .queryParam("size", 100)
                 .toUriString();
 
         try {
-            // Menggunakan Map.class sebagai jembatan pembongkar wrapper ApiSuccessResponse dan HarvestPageResponse
             ResponseEntity<Map> response = restTemplate.exchange(
                     url, HttpMethod.GET, entity, Map.class
             );
 
             if (response.getBody() != null && response.getBody().get("data") != null) {
                 Map<?, ?> rootData = (Map<?, ?>) response.getBody().get("data");
-
-                // Membongkar properti pembungkus pagination (biasanya bernama 'content' atau 'harvests')
                 List<?> contentList = null;
                 if (rootData.get("content") != null) {
                     contentList = (List<?>) rootData.get("content");
@@ -55,7 +52,6 @@ public class HarvestClient {
                 }
 
                 if (contentList != null) {
-                    // Ekstraksi nilai berat (weightKg) dari setiap baris panen milik anak buah Mandor tersebut
                     return contentList.stream()
                             .map(item -> {
                                 if (item instanceof Map) {

@@ -17,20 +17,19 @@ public class PlantationDetailQueryResponse {
         private UUID id;
         private String name;
         private String code;
-        private DriverPageData drivers; // Drivers di sini bertipe page response!
+        private DriverPageData drivers;
     }
 
     @Getter
     @Setter
     public static class DriverPageData {
-        private List<DriverItem> content; // Menangkap daftar driver di dalam kebun
+        private List<DriverItem> content;
     }
 
     @Getter
     @Setter
     public static class DriverItem {
         private UUID id;
-                // Driver ID (sesuaikan jika di modul plantation menggunakan nama field lain seperti driverId)
         private String driverName;
     }
 }

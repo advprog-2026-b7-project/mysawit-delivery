@@ -37,7 +37,6 @@ public class ShipmentServiceImpl implements ShipmentService {
     public ShipmentResponse createShipment(CreateShipmentRequest request, String authHeader) {
         BigDecimal totalAvailableWeight = harvestClient.getTotalApprovedWeight(authHeader);
 
-        // 2. Validasi: Apakah berat yang mau dikirim melebihi total panen APPROVED yang ada di kebun?
         if (request.getTotalWeightKg().compareTo(totalAvailableWeight) > 0) {
             throw new IllegalArgumentException(
                     "Berat pengiriman (" + request.getTotalWeightKg() +
@@ -46,28 +45,22 @@ public class ShipmentServiceImpl implements ShipmentService {
             );
         }
 
-        // 3. Validasi aturan bisnis maksimal berat truk (misal aturan 400 Kg)
         weightValidator.validate(request.getTotalWeightKg());
 
-        // 4. OTOMATISASI: Ambil data kebun (Plantation) & Mandor berdasarkan token JWT
-        // (Asumsi PlantationClient kamu sudah di-inject dan memiliki method ini)
         UUID plantationId = plantationClient.getPlantationIdByMandor(authHeader);
         UUID mandorId = plantationClient.getMandorIdFromToken(authHeader);
 
-        // 5. Validasi Tambahan: Pastikan Driver yang dipilih memang bertugas di kebun tersebut
         boolean isDriverValid =
                 plantationClient.isDriverAssignedToPlantation(authHeader, plantationId,
                         request.getDriverId());
         if (!isDriverValid) {
             throw new IllegalStateException("Driver yang dipilih tidak terdaftar di kebun Anda!");
         }
-
-        // 6. Bangun objek Shipment dengan data yang sudah tervalidasi aman
         Shipment shipment = Shipment.builder()
-                .plantationId(plantationId) // Set otomatis dari backend via JWT!
-                .mandorId(mandorId)         // Set otomatis dari backend via JWT!
+                .plantationId(plantationId)
+                .mandorId(mandorId)
                 .driverId(
-                        request.getDriverId()) // Diambil dari dropdown yang dipilih mandor di frontend
+                        request.getDriverId())
                 .totalWeightKg(request.getTotalWeightKg())
                 .status(ShipmentStatus.MEMUAT)
                 .build();

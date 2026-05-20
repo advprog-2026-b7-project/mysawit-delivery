@@ -10,14 +10,12 @@ import java.util.UUID;
 @Getter
 @Setter
 public class HarvestQueryResponse {
-    private String message; // Menangkap field "success" atau pesan status dari ApiSuccessResponse
+    private String message;
     private HarvestPageData data;
 
     @Getter
     @Setter
     public static class HarvestPageData {
-        // Menangkap list harvest yang ada di dalam HarvestPageResponse
-        // Catatan: Pastikan nama field 'harvests' ini sama dengan nama list yang ada di kelas HarvestPageResponse kamu
         private List<HarvestItemResponse> content;
     }
 
@@ -26,7 +24,7 @@ public class HarvestQueryResponse {
     public static class HarvestItemResponse {
         private UUID id;
         private String plantationId;
-        private BigDecimal weightKg; // COCOK: sama dengan nama field di model Harvest kamu
-        private String status;       // "APPROVED"
+        private BigDecimal weightKg;
+        private String status;
     }
 }
