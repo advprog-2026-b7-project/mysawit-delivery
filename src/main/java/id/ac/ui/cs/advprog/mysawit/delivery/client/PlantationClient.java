@@ -21,16 +21,15 @@ public class PlantationClient {
     private final String plantationServiceUrl;
 
     @Value("${inter.service.api-key}")
-    private String internalApiKey; // 👈 ganti adminToken
+    private String internalApiKey;
 
     public PlantationClient(RestTemplate restTemplate,
                             @Value("${plantation.service.url:http://localhost:8081}")
-                            String plantationServiceUrl) { // 👈 hapus adminToken dari constructor
+                            String plantationServiceUrl) {
         this.restTemplate = restTemplate;
         this.plantationServiceUrl = plantationServiceUrl;
     }
 
-    // 👇 Helper — semua method pakai ini
     private HttpEntity<Void> internalRequest() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.AUTHORIZATION, internalApiKey);
@@ -38,15 +37,28 @@ public class PlantationClient {
     }
 
     public UUID getPlantationIdByMandor(String authHeader) {
+        UUID mandorId = getMandorIdFromToken(authHeader);
+
         String url = UriComponentsBuilder.fromHttpUrl(plantationServiceUrl + "/api/v1/plantations")
-                .queryParam("size", 1)
+                .queryParam("size", 100)
                 .toUriString();
+
         try {
             ResponseEntity<PlantationListQueryResponse> response = restTemplate.exchange(
                     url, HttpMethod.GET, internalRequest(), PlantationListQueryResponse.class);
-            if (response.getBody() != null && response.getBody().getData() != null
-                    && !response.getBody().getData().getContent().isEmpty()) {
-                return response.getBody().getData().getContent().get(0).getId();
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                for (PlantationListQueryResponse.PlantationItem item :
+                        response.getBody().getData().getContent()) {
+
+                    // Cek detail setiap plantation
+                    PlantationDetailQueryResponse detail = getPlantationDetail(item.getId());
+                    if (detail != null && detail.getData() != null
+                            && detail.getData().getMandor() != null
+                            && mandorId.equals(detail.getData().getMandor().getId())) {
+                        return item.getId();
+                    }
+                }
             }
         } catch (Exception e) {
             System.err.println("Gagal mengambil data kebun: " + e.getMessage());

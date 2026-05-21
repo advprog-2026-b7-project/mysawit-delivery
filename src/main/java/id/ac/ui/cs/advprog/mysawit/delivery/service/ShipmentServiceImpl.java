@@ -250,4 +250,18 @@ public class ShipmentServiceImpl implements ShipmentService {
                 .stream().map(shipmentMapper::toResponse).toList();
     }
 
+    @Override
+    public BigDecimal getAvailableHarvestWeight(String authHeader) {
+        UUID plantationId = plantationClient.getPlantationIdByMandor(authHeader);
+        BigDecimal totalHarvest = harvestClient.getTotalApprovedWeight(authHeader);
+        BigDecimal totalShipped = shipmentRepository.sumActiveWeightByPlantation(
+                plantationId,
+                List.of(ShipmentStatus.DITOLAK_MANDOR, ShipmentStatus.DITOLAK_ADMIN)
+        );
+        System.out.println("plantationId: " + plantationId);
+        System.out.println("totalHarvest: " + totalHarvest);
+        System.out.println("totalShipped: " + totalShipped);
+        BigDecimal available = totalHarvest.subtract(totalShipped);
+        return available.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : available;
+    }
 }

@@ -30,8 +30,7 @@ public class HarvestClient {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.AUTHORIZATION, authHeader);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        // Memanggil API Harvest bawaan dengan menyaring status APPROVED
+        
         String url = UriComponentsBuilder.fromHttpUrl(harvestServiceUrl + "/api/v1/harvests")
                 .queryParam("status", "APPROVED")
                 .queryParam("size", 100)

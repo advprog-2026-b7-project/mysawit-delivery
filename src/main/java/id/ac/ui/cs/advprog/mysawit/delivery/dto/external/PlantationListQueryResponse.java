@@ -14,14 +14,22 @@ public class PlantationListQueryResponse {
     @Getter
     @Setter
     public static class PlantationPageData {
-        private List<PlantationItem> content; // Menangkap daftar kebun
+        private List<PlantationItem> content;
     }
 
     @Getter
     @Setter
     public static class PlantationItem {
-        private UUID id; // Ini Plantation ID
+        private UUID id;
         private String name;
         private String code;
+        private MandorItem mandor;
+    }
+
+    @Getter
+    @Setter
+    public static class MandorItem {
+        private UUID id;
+        private String name;
     }
 }

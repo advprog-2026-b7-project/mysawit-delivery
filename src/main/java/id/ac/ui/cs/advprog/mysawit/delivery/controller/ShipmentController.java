@@ -39,10 +39,8 @@ public class ShipmentController {
     @PostMapping
     public ResponseEntity<ApiSuccessResponse<ShipmentResponse>> createShipment(
             @RequestHeader(value = "Authorization") String authHeader,
-            // Tangkap token JWT dari header
             @Valid @RequestBody CreateShipmentRequest request
     ) {
-        // Teruskan authHeader ke dalam method service
         ShipmentResponse data = shipmentService.createShipment(request, authHeader);
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiSuccessResponse<>(data));
     }
@@ -149,8 +147,9 @@ public class ShipmentController {
     @GetMapping("/harvest/approved-weight")
     public ResponseEntity<BigDecimal> getApprovedWeight(
             @RequestHeader(value = "Authorization") String authHeader) {
-        BigDecimal totalKg = harvestClient.getTotalApprovedWeight(authHeader);
-        return ResponseEntity.ok(totalKg);
+        BigDecimal result = shipmentService.getAvailableHarvestWeight(authHeader);
+        System.out.println("Available harvest weight: " + result); // 👈
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/drivers/available")
@@ -162,8 +161,6 @@ public class ShipmentController {
 
         if (response != null && response.getData() != null &&
                 response.getData().getDrivers() != null) {
-            System.out.println("Driver list: " + response.getData().getDrivers().getContent());
-            System.out.println("Driver[0]: " + response.getData().getDrivers().getContent().get(0));
         }
 
         if (response == null || response.getData() == null ||

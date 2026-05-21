@@ -1,6 +1,6 @@
 # MySawit Delivery Service
 
-Service ini jalan di port `8080` dan menggunakan database PostgreSQL terpisah khusus delivery.
+Service ini jalan di port `8082` dan menggunakan database PostgreSQL terpisah khusus delivery.
 
 ## Menjalankan Dengan Infra Repo
 
@@ -34,14 +34,16 @@ docker compose up --build
 
 ## Catatan Skema Delivery
 
-Entity pada service ini sudah disejajarkan dengan skema tim untuk kebutuhan operasional pengiriman. Terdapat dua tabel utama:
+Entity pada service ini sudah disejajarkan dengan skema tim untuk kebutuhan operasional pengiriman. Terdapat dua tabel
+utama:
 
 1. Entity `Shipment` (Tabel `shipments`)
    Menyimpan data utama pengiriman hasil panen.
+
 - `id` (UUID)
 - `plantation_id` (UUID, wajib diisi)
 - `mandor_id` (UUID, wajib diisi)
-- `driver_id` (UUID, bisa kosong saa pertama kali dibuat) 
+- `driver_id` (UUID, bisa kosong saa pertama kali dibuat)
 - `total_weight_kg` (Decimal/Numeric, Wajib diisi)
 - `status` (Enum, Wajib diisi, Default: `MEMUAT`)
 - `rejected_reason` (Text)
@@ -50,6 +52,7 @@ Entity pada service ini sudah disejajarkan dengan skema tim untuk kebutuhan oper
 
 2. Entity `ShipmentItems` (Tabel `shipment_items`)
    Menyimpan detail relasi antara pengiriman dengan data panen yang diangkut.
+
 - `id` (UUID, Primary Key)
 - `shipment_id` (UUID, Wajib diisi)
 - `harvest_id` (UUID, Wajib diisi)

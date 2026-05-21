@@ -17,7 +17,15 @@ public class PlantationDetailQueryResponse {
         private UUID id;
         private String name;
         private String code;
+        private MandorItem mandor;
         private DriverPageData drivers;
+    }
+
+    @Getter
+    @Setter
+    public static class MandorItem {
+        private UUID id;
+        private String name;
     }
 
     @Getter
