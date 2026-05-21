@@ -65,7 +65,6 @@ public class ShipmentServiceImpl implements ShipmentService {
                 .status(ShipmentStatus.MEMUAT)
                 .build();
 
-        // 7. Simpan ke database dan kembalikan response
         Shipment savedShipment = shipmentRepository.save(shipment);
         return shipmentMapper.toResponse(savedShipment);
     }

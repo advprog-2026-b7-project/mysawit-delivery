@@ -30,6 +30,6 @@ public class PlantationDetailQueryResponse {
     @Setter
     public static class DriverItem {
         private UUID id;
-        private String driverName;
+        private String name;
     }
 }

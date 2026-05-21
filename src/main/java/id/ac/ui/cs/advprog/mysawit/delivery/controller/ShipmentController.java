@@ -1,8 +1,11 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.controller;
 
+import id.ac.ui.cs.advprog.mysawit.delivery.client.HarvestClient;
+import id.ac.ui.cs.advprog.mysawit.delivery.client.PlantationClient;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.AdminRejectRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.CreateShipmentRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.ShipmentResponse;
+import id.ac.ui.cs.advprog.mysawit.delivery.dto.external.PlantationDetailQueryResponse;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.response.ApiSuccessResponse;
 import id.ac.ui.cs.advprog.mysawit.delivery.service.ShipmentService;
 import jakarta.validation.Valid;
@@ -12,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import id.ac.ui.cs.advprog.mysawit.delivery.entity.ShipmentStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -22,9 +26,14 @@ import java.util.UUID;
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
+    private final HarvestClient harvestClient;
+    private final PlantationClient plantationClient;
 
-    public ShipmentController(ShipmentService shipmentService) {
+    public ShipmentController(ShipmentService shipmentService, HarvestClient harvestClient,
+                              PlantationClient plantationClient) {
         this.shipmentService = shipmentService;
+        this.harvestClient = harvestClient;
+        this.plantationClient = plantationClient;
     }
 
     @PostMapping
@@ -135,5 +144,45 @@ public class ShipmentController {
     public ResponseEntity<List<ShipmentResponse>> getSpecificMandorDeliveries(
             @PathVariable("mandorId") UUID mandorId) {
         return ResponseEntity.ok(shipmentService.getSpecificMandorDeliveries(mandorId));
+    }
+
+    @GetMapping("/harvest/approved-weight")
+    public ResponseEntity<BigDecimal> getApprovedWeight(
+            @RequestHeader(value = "Authorization") String authHeader) {
+        BigDecimal totalKg = harvestClient.getTotalApprovedWeight(authHeader);
+        return ResponseEntity.ok(totalKg);
+    }
+
+    @GetMapping("/drivers/available")
+    public ResponseEntity<?> getAvailableDrivers(
+            @RequestHeader(value = "Authorization") String authHeader,
+            @RequestParam("plantationId")
+            UUID plantationId) {
+        PlantationDetailQueryResponse response = plantationClient.getPlantationDetail(plantationId);
+
+        if (response != null && response.getData() != null &&
+                response.getData().getDrivers() != null) {
+            System.out.println("Driver list: " + response.getData().getDrivers().getContent());
+            System.out.println("Driver[0]: " + response.getData().getDrivers().getContent().get(0));
+        }
+
+        if (response == null || response.getData() == null ||
+                response.getData().getDrivers() == null) {
+            return ResponseEntity.ok(java.util.List.of());
+        }
+        java.util.List<PlantationDetailQueryResponse.DriverItem> availableDrivers =
+                response.getData().getDrivers().getContent();
+        return ResponseEntity.ok(availableDrivers);
+    }
+
+    @GetMapping("/my-plantation")
+    public ResponseEntity<?> getMyPlantationId(@RequestHeader("Authorization") String authHeader) {
+        try {
+            UUID plantationId = plantationClient.getPlantationIdByMandor(authHeader);
+            return ResponseEntity.ok(java.util.Map.of("plantationId", plantationId));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 }
