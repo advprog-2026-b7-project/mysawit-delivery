@@ -40,25 +40,18 @@ public class PlantationClient {
         UUID mandorId = getMandorIdFromToken(authHeader);
 
         String url = UriComponentsBuilder.fromHttpUrl(plantationServiceUrl + "/api/v1/plantations")
-                .queryParam("size", 100)
+                .queryParam("mandorId", mandorId)
+                .queryParam("size", 1)
                 .toUriString();
 
         try {
             ResponseEntity<PlantationListQueryResponse> response = restTemplate.exchange(
                     url, HttpMethod.GET, internalRequest(), PlantationListQueryResponse.class);
 
-            if (response.getBody() != null && response.getBody().getData() != null) {
-                for (PlantationListQueryResponse.PlantationItem item :
-                        response.getBody().getData().getContent()) {
-
-                    // Cek detail setiap plantation
-                    PlantationDetailQueryResponse detail = getPlantationDetail(item.getId());
-                    if (detail != null && detail.getData() != null
-                            && detail.getData().getMandor() != null
-                            && mandorId.equals(detail.getData().getMandor().getId())) {
-                        return item.getId();
-                    }
-                }
+            if (response.getBody() != null && response.getBody().getData() != null
+                    && response.getBody().getData().getContent() != null
+                    && !response.getBody().getData().getContent().isEmpty()) {
+                return response.getBody().getData().getContent().get(0).getId();
             }
         } catch (Exception e) {
             System.err.println("Gagal mengambil data kebun: " + e.getMessage());
@@ -105,14 +98,30 @@ public class PlantationClient {
         try {
             String token = authHeader.substring(7);
             String[] chunks = token.split("\\.");
+            if (chunks.length < 2) {
+                throw new IllegalArgumentException("Token JWT tidak valid");
+            }
             Base64.Decoder decoder = Base64.getUrlDecoder();
             String payload = new String(decoder.decode(chunks[1]));
-            String searchString = "\"sub\":\"";
-            int startIndex = payload.indexOf(searchString) + searchString.length();
-            int endIndex = payload.indexOf("\"", startIndex);
-            return UUID.fromString(payload.substring(startIndex, endIndex));
+            String searchKey = "\"sub\":";
+            int keyIndex = payload.indexOf(searchKey);
+            if (keyIndex < 0) {
+                throw new IllegalArgumentException("Token JWT tidak memiliki sub claim");
+            }
+            int startIndex = keyIndex + searchKey.length();
+            String remaining = payload.substring(startIndex).trim();
+            if (remaining.startsWith("\"")) {
+                startIndex = keyIndex + searchKey.length() + 1;
+                int endIndex = payload.indexOf("\"", startIndex);
+                return UUID.fromString(payload.substring(startIndex, endIndex));
+            } else {
+                int endIndex = remaining.indexOf(",");
+                if (endIndex < 0) endIndex = remaining.indexOf("}");
+                if (endIndex < 0) endIndex = remaining.length();
+                return UUID.fromString(remaining.substring(0, endIndex).trim());
+            }
         } catch (Exception e) {
-            throw new IllegalArgumentException("Token JWT tidak valid atau corrupt.");
+            throw new IllegalArgumentException("Token JWT tidak valid atau corrupt: " + e.getMessage());
         }
     }
 }

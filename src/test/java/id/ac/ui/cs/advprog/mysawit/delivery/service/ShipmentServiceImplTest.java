@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.service;
 
 import id.ac.ui.cs.advprog.mysawit.delivery.client.HarvestClient;
+import id.ac.ui.cs.advprog.mysawit.delivery.client.PaymentPayrollClient;
 import id.ac.ui.cs.advprog.mysawit.delivery.client.PlantationClient;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.AdminRejectRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.CreateShipmentRequest;
@@ -53,6 +54,9 @@ class ShipmentServiceImplTest {
 
     @Mock
     private PlantationClient plantationClient;
+
+    @Mock
+    private PaymentPayrollClient paymentPayrollClient;
 
     @InjectMocks
     private ShipmentServiceImpl shipmentService;
@@ -853,13 +857,15 @@ class ShipmentServiceImplTest {
         LocalDateTime end = LocalDateTime.now();
         List<Shipment> shipments = List.of(dummyShipment);
 
-        when(shipmentRepository.findDriverHistory(driverId, start, end)).thenReturn(shipments);
+        when(shipmentRepository.findDriverHistory(eq(driverId), eq(start), eq(end), anyList()))
+                .thenReturn(shipments);
         when(shipmentMapper.toResponse(any(Shipment.class))).thenReturn(dummyResponse);
 
         List<ShipmentResponse> result = shipmentService.getDriverHistory(driverId, start, end);
 
         assertEquals(1, result.size());
-        verify(shipmentRepository, times(1)).findDriverHistory(driverId, start, end);
+        verify(shipmentRepository, times(1))
+                .findDriverHistory(eq(driverId), eq(start), eq(end), anyList());
     }
 
     @Test

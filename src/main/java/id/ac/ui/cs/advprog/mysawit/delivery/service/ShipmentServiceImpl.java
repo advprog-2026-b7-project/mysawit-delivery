@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.service;
 
 import id.ac.ui.cs.advprog.mysawit.delivery.client.HarvestClient;
+import id.ac.ui.cs.advprog.mysawit.delivery.client.PaymentPayrollClient;
 import id.ac.ui.cs.advprog.mysawit.delivery.client.PlantationClient;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.AdminRejectRequest;
 import id.ac.ui.cs.advprog.mysawit.delivery.dto.CreateShipmentRequest;
@@ -33,7 +34,16 @@ public class ShipmentServiceImpl implements ShipmentService {
     private static final List<ShipmentStatus> TERMINAL_STATUSES = List.of(
             ShipmentStatus.DITOLAK_MANDOR,
             ShipmentStatus.DITOLAK_ADMIN,
-            ShipmentStatus.DISETUJUI_ADMIN
+            ShipmentStatus.DISETUJUI_ADMIN,
+            ShipmentStatus.DISETUJUI_PARSIAL
+    );
+
+    /** Completed statuses — terminal statuses that represent successful delivery completion */
+    private static final List<ShipmentStatus> COMPLETED_STATUSES = List.of(
+            ShipmentStatus.DISETUJUI_ADMIN,
+            ShipmentStatus.DISETUJUI_PARSIAL,
+            ShipmentStatus.DITOLAK_MANDOR,
+            ShipmentStatus.DITOLAK_ADMIN
     );
 
     private final ShipmentRepository shipmentRepository;
@@ -42,6 +52,7 @@ public class ShipmentServiceImpl implements ShipmentService {
     private final ShipmentMapper shipmentMapper;
     private final HarvestClient harvestClient;
     private final PlantationClient plantationClient;
+    private final PaymentPayrollClient paymentPayrollClient;
 
     @Override
     @Transactional
@@ -196,6 +207,15 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Override
     @Transactional
     public ShipmentResponse approveByMandor(UUID id, UUID callerMandorId) {
+        return approveByMandor(id, callerMandorId, null);
+    }
+
+    @Override
+    @Transactional
+    public ShipmentResponse approveByMandor(
+            UUID id,
+            UUID callerMandorId,
+            String authHeader) {
         Shipment shipment = shipmentRepository.findById(id)
                 .orElseThrow(() ->
                         new NoSuchElementException(NOT_FOUND_MSG));
@@ -208,8 +228,9 @@ public class ShipmentServiceImpl implements ShipmentService {
                     "Hanya pengiriman yang telah tiba yang dapat diapprove Mandor.");
         }
         shipment.setStatus(ShipmentStatus.DISETUJUI_MANDOR);
+        shipment.setCompletedAt(LocalDateTime.now());
         shipmentRepository.save(shipment);
-        //todo: payroll driver
+        paymentPayrollClient.createDriverPayroll(shipment, authHeader);
         return shipmentMapper.toResponse(shipment);
     }
 
@@ -250,6 +271,12 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Override
     @Transactional
     public ShipmentResponse approveByAdmin(UUID id) {
+        return approveByAdmin(id, null);
+    }
+
+    @Override
+    @Transactional
+    public ShipmentResponse approveByAdmin(UUID id, String authHeader) {
         Shipment shipment = shipmentRepository.findById(id)
                 .orElseThrow(() ->
                         new NoSuchElementException(NOT_FOUND_MSG));
@@ -261,14 +288,24 @@ public class ShipmentServiceImpl implements ShipmentService {
             shipment.setRecognizedWeightKg(shipment.getTotalWeightKg());
         }
         shipment.setStatus(ShipmentStatus.DISETUJUI_ADMIN);
+        shipment.setCompletedAt(LocalDateTime.now());
         shipmentRepository.save(shipment);
-        //todo: payroll mandor
+        paymentPayrollClient.createMandorPayroll(shipment, authHeader);
         return shipmentMapper.toResponse(shipment);
     }
 
     @Override
     @Transactional
     public ShipmentResponse rejectByAdmin(UUID id, AdminRejectRequest request) {
+        return rejectByAdmin(id, request, null);
+    }
+
+    @Override
+    @Transactional
+    public ShipmentResponse rejectByAdmin(
+            UUID id,
+            AdminRejectRequest request,
+            String authHeader) {
         Shipment shipment = shipmentRepository.findById(id)
                 .orElseThrow(() ->
                         new NoSuchElementException(NOT_FOUND_MSG));
@@ -293,7 +330,6 @@ public class ShipmentServiceImpl implements ShipmentService {
             shipment.setRecognizedWeightKg(request.getRecognizedKg());
             shipment.setRejectedReason(request.getReason());
             shipment.setStatus(ShipmentStatus.DISETUJUI_PARSIAL);
-            //todo:payroll mandor sesuai berat
         } else {
             if (request.getReason() == null || request.getReason().trim().isEmpty()) {
                 throw new IllegalArgumentException(
@@ -304,6 +340,9 @@ public class ShipmentServiceImpl implements ShipmentService {
             shipment.setRejectedReason(request.getReason());
         }
         shipmentRepository.save(shipment);
+        if (shipment.getStatus() == ShipmentStatus.DISETUJUI_PARSIAL) {
+            paymentPayrollClient.createMandorPayroll(shipment, authHeader);
+        }
         return shipmentMapper.toResponse(shipment);
     }
 
@@ -335,7 +374,7 @@ public class ShipmentServiceImpl implements ShipmentService {
     public List<ShipmentResponse> getDriverHistory(UUID driverId, LocalDateTime startDate,
                                                    LocalDateTime endDate) {
         return shipmentRepository.
-                findDriverHistory(driverId, startDate, endDate)
+                findDriverHistory(driverId, startDate, endDate, COMPLETED_STATUSES)
                 .stream()
                 .map(shipmentMapper::toResponse)
                 .toList();

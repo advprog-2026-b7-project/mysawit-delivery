@@ -3,11 +3,13 @@ package id.ac.ui.cs.advprog.mysawit.delivery.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
+@EnableAsync
 public class WebConfig implements WebMvcConfigurer {
 
     @Value("${app.cors.allowed-origins}")

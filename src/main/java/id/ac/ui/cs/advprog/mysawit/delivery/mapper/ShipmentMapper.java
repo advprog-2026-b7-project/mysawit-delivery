@@ -28,6 +28,7 @@ public class ShipmentMapper {
                 .harvestIds(harvestIds)
                 .createdAt(shipment.getCreatedAt())
                 .updatedAt(shipment.getUpdatedAt())
+                .completedAt(shipment.getCompletedAt())
                 .build();
     }
 }

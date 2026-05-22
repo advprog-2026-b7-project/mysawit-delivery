@@ -23,13 +23,31 @@ public interface ShipmentService {
 
     ShipmentResponse approveByMandor(UUID id, UUID callerMandorId);
 
+    default ShipmentResponse approveByMandor(
+            UUID id,
+            UUID callerMandorId,
+            String authHeader) {
+        return approveByMandor(id, callerMandorId);
+    }
+
     ShipmentResponse rejectByMandor(UUID id, String reason, UUID callerMandorId);
 
     List<ShipmentResponse> getDriverDeliveriesForMandor(UUID driverId, UUID callerMandorId);
 
     ShipmentResponse approveByAdmin(UUID id);
 
+    default ShipmentResponse approveByAdmin(UUID id, String authHeader) {
+        return approveByAdmin(id);
+    }
+
     ShipmentResponse rejectByAdmin(UUID id, AdminRejectRequest request);
+
+    default ShipmentResponse rejectByAdmin(
+            UUID id,
+            AdminRejectRequest request,
+            String authHeader) {
+        return rejectByAdmin(id, request);
+    }
 
     List<ShipmentResponse> getApprovedByMandorShipments(
             LocalDateTime startDate, LocalDateTime endDate);

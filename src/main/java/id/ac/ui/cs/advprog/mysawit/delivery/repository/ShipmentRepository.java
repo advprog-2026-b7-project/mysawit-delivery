@@ -34,15 +34,17 @@ public interface ShipmentRepository extends JpaRepository<Shipment, UUID> {
     );
 
     @Query("SELECT s FROM Shipment s WHERE s.driverId = :driverId " +
-            "AND (:startDate IS NULL OR s.createdAt >= :startDate) " +
-            "AND (:endDate IS NULL OR s.createdAt <= :endDate)")
+            "AND s.status IN :terminalStatuses " +
+            "AND (:startDate IS NULL OR s.updatedAt >= :startDate) " +
+            "AND (:endDate IS NULL OR s.updatedAt <= :endDate)")
     List<Shipment> findDriverHistory(
             @Param("driverId") UUID driverId,
             @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate
+            @Param("endDate") LocalDateTime endDate,
+            @Param("terminalStatuses") List<ShipmentStatus> terminalStatuses
     );
 
-    @Query("SELECT COALESCE(SUM(s.totalWeightKg), 0) FROM Shipment s " +
+    @Query("SELECT COALESCE(SUM(COALESCE(s.recognizedWeightKg, s.totalWeightKg)), 0) FROM Shipment s " +
             "WHERE s.plantationId = :plantationId " +
             "AND s.status NOT IN :excludedStatuses")
     BigDecimal sumActiveWeightByPlantation(

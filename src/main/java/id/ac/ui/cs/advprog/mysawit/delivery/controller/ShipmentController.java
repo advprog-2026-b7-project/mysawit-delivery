@@ -51,6 +51,11 @@ public class ShipmentController {
     public ResponseEntity<ShipmentResponse> assignDriver(
             @PathVariable("id") UUID shipmentId,
             @RequestBody Map<String, UUID> requestBody) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities().stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_MANDOR"))) {
+            throw new IllegalStateException("Only MANDOR can assign drivers");
+        }
         UUID driverId = requestBody.get("driverId");
         if (driverId == null) {
             throw new IllegalArgumentException("Driver ID tidak boleh kosong!");
@@ -100,15 +105,22 @@ public class ShipmentController {
 
     @GetMapping
     public ResponseEntity<List<ShipmentResponse>> getAllShipments() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities().stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            throw new IllegalStateException("Only ADMIN can view all shipments");
+        }
         return ResponseEntity.ok(shipmentService.getAllShipments());
     }
 
     @PatchMapping("/{id}/approve-mandor")
     public ResponseEntity<ShipmentResponse> approveByMandor(
-            @PathVariable("id") UUID shipmentId) {
+            @PathVariable("id") UUID shipmentId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UUID callerMandorId = UUID.fromString(authentication.getName());
-        ShipmentResponse response = shipmentService.approveByMandor(shipmentId, callerMandorId);
+        ShipmentResponse response =
+                shipmentService.approveByMandor(shipmentId, callerMandorId, authHeader);
         return ResponseEntity.ok(response);
     }
 
@@ -146,27 +158,52 @@ public class ShipmentController {
                     iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(
                     iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities().stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            throw new IllegalStateException("Only ADMIN can view pending review shipments");
+        }
         return ResponseEntity.ok(
                 shipmentService.getApprovedByMandorShipments(startDate, endDate));
     }
 
     @PatchMapping("/{id}/approve-admin")
-    public ResponseEntity<ShipmentResponse> approveByAdmin(@PathVariable("id") UUID shipmentId) {
-        ShipmentResponse response = shipmentService.approveByAdmin(shipmentId);
+    public ResponseEntity<ShipmentResponse> approveByAdmin(
+            @PathVariable("id") UUID shipmentId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities().stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            throw new IllegalStateException("Only ADMIN can approve shipments");
+        }
+        ShipmentResponse response = shipmentService.approveByAdmin(shipmentId, authHeader);
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}/reject-admin")
     public ResponseEntity<ShipmentResponse> rejectByAdmin(
             @PathVariable("id") UUID shipmentId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody AdminRejectRequest request) {
-        ShipmentResponse response = shipmentService.rejectByAdmin(shipmentId, request);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities().stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            throw new IllegalStateException("Only ADMIN can reject shipments");
+        }
+        ShipmentResponse response = shipmentService.rejectByAdmin(shipmentId, request, authHeader);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/driver/{driverId}/assigned")
     public ResponseEntity<List<ShipmentResponse>> getAssignedDeliveriesForDriver(
             @PathVariable("driverId") UUID driverId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UUID callerId = UUID.fromString(auth.getName());
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !callerId.equals(driverId)) {
+            throw new IllegalStateException("You can only view your own assignments");
+        }
         return ResponseEntity.ok(shipmentService.getAssignedDeliveriesForDriver(driverId));
     }
 
@@ -177,24 +214,52 @@ public class ShipmentController {
                     iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam("endDate") @DateTimeFormat(
                     iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UUID callerId = UUID.fromString(auth.getName());
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !callerId.equals(driverId)) {
+            throw new IllegalStateException("You can only view your own history");
+        }
         return ResponseEntity.ok(shipmentService.getDriverHistory(driverId, startDate, endDate));
     }
 
     @GetMapping("/mandor/{mandorId}/ongoing")
     public ResponseEntity<List<ShipmentResponse>> getOngoingDeliveriesForMandor(
             @PathVariable("mandorId") UUID mandorId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UUID callerId = UUID.fromString(auth.getName());
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !callerId.equals(mandorId)) {
+            throw new IllegalStateException("You can only view your own ongoing deliveries");
+        }
         return ResponseEntity.ok(shipmentService.getOngoingDeliveriesForMandor(mandorId));
     }
 
     @GetMapping("/driver/{driverId}")
     public ResponseEntity<List<ShipmentResponse>> getSpecificDriverDeliveries(
             @PathVariable("driverId") UUID driverId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UUID callerId = UUID.fromString(auth.getName());
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !callerId.equals(driverId)) {
+            throw new IllegalStateException("You can only view your own deliveries");
+        }
         return ResponseEntity.ok(shipmentService.getSpecificDriverDeliveries(driverId));
     }
 
     @GetMapping("/mandor/{mandorId}")
     public ResponseEntity<List<ShipmentResponse>> getSpecificMandorDeliveries(
             @PathVariable("mandorId") UUID mandorId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UUID callerId = UUID.fromString(auth.getName());
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !callerId.equals(mandorId)) {
+            throw new IllegalStateException("You can only view your own deliveries");
+        }
         return ResponseEntity.ok(shipmentService.getSpecificMandorDeliveries(mandorId));
     }
 
@@ -202,7 +267,6 @@ public class ShipmentController {
     public ResponseEntity<BigDecimal> getApprovedWeight(
             @RequestHeader(value = "Authorization") String authHeader) {
         BigDecimal result = shipmentService.getAvailableHarvestWeight(authHeader);
-        System.out.println("Available harvest weight: " + result); // 👈
         return ResponseEntity.ok(result);
     }
 
@@ -212,10 +276,6 @@ public class ShipmentController {
             @RequestParam("plantationId")
             UUID plantationId) {
         PlantationDetailQueryResponse response = plantationClient.getPlantationDetail(plantationId);
-
-        if (response != null && response.getData() != null &&
-                response.getData().getDrivers() != null) {
-        }
 
         if (response == null || response.getData() == null ||
                 response.getData().getDrivers() == null) {

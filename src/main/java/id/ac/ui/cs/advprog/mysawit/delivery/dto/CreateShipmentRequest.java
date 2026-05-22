@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.dto;
 
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.util.List;
@@ -12,6 +14,9 @@ import java.util.UUID;
  */
 @Data
 public class CreateShipmentRequest {
+    @NotNull(message = "Driver ID tidak boleh kosong")
     private UUID driverId;
+
+    @NotEmpty(message = "Minimal satu harvest harus dipilih")
     private List<UUID> harvestIds;
 }

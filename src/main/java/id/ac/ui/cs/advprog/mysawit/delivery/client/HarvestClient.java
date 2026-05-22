@@ -33,44 +33,60 @@ public class HarvestClient {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.AUTHORIZATION, authHeader);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
-        
-        String url = UriComponentsBuilder.fromHttpUrl(harvestServiceUrl + "/api/v1/harvests")
-                .queryParam("status", "APPROVED")
-                .queryParam("size", 100)
-                .toUriString();
 
-        try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url, HttpMethod.GET, entity, Map.class
-            );
+        BigDecimal total = BigDecimal.ZERO;
+        int page = 0;
+        int pageSize = 100;
+        boolean hasMore = true;
 
-            if (response.getBody() != null && response.getBody().get("data") != null) {
-                Map<?, ?> rootData = (Map<?, ?>) response.getBody().get("data");
-                List<?> contentList = null;
-                if (rootData.get("content") != null) {
-                    contentList = (List<?>) rootData.get("content");
-                } else if (rootData.get("harvests") != null) {
-                    contentList = (List<?>) rootData.get("harvests");
+        while (hasMore) {
+            String url = UriComponentsBuilder.fromHttpUrl(harvestServiceUrl + "/api/v1/harvests")
+                    .queryParam("status", "APPROVED")
+                    .queryParam("page", page)
+                    .queryParam("size", pageSize)
+                    .toUriString();
+
+            try {
+                ResponseEntity<Map> response = restTemplate.exchange(
+                        url, HttpMethod.GET, entity, Map.class
+                );
+
+                if (response.getBody() != null && response.getBody().get("data") != null) {
+                    Map<?, ?> rootData = (Map<?, ?>) response.getBody().get("data");
+                    List<?> contentList = null;
+                    if (rootData.get("content") != null) {
+                        contentList = (List<?>) rootData.get("content");
+                    } else if (rootData.get("harvests") != null) {
+                        contentList = (List<?>) rootData.get("harvests");
+                    }
+
+                    if (contentList != null && !contentList.isEmpty()) {
+                        BigDecimal pageTotal = contentList.stream()
+                                .map(item -> {
+                                    if (item instanceof Map) {
+                                        Object weight = ((Map<?, ?>) item).get("weightKg");
+                                        return weight != null ? new BigDecimal(weight.toString()) :
+                                                BigDecimal.ZERO;
+                                    }
+                                    return BigDecimal.ZERO;
+                                })
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                        total = total.add(pageTotal);
+                        page++;
+                        hasMore = contentList.size() >= pageSize;
+                    } else {
+                        hasMore = false;
+                    }
+                } else {
+                    hasMore = false;
                 }
-
-                if (contentList != null) {
-                    return contentList.stream()
-                            .map(item -> {
-                                if (item instanceof Map) {
-                                    Object weight = ((Map<?, ?>) item).get("weightKg");
-                                    return weight != null ? new BigDecimal(weight.toString()) :
-                                            BigDecimal.ZERO;
-                                }
-                                return BigDecimal.ZERO;
-                            })
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                }
+            } catch (Exception e) {
+                System.err.println("Gagal mengalkulasi data dari Harvest Service: " + e.getMessage());
+                hasMore = false;
             }
-        } catch (Exception e) {
-            System.err.println("Gagal mengalkulasi data dari Harvest Service: " + e.getMessage());
         }
 
-        return BigDecimal.ZERO;
+        return total;
     }
 
     /**
