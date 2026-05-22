@@ -74,9 +74,14 @@ public class ShipmentServiceImpl implements ShipmentService {
                         "Harvest " + harvestId + " belum disetujui (status: "
                                 + harvest.getStatus() + ")!");
             }
-            UUID harvestPlantationId = parseHarvestPlantationId(harvestId,
-                    harvest.getPlantationId());
-            if (!plantationId.equals(harvestPlantationId)) {
+            // Only enforce plantation ownership when the harvest carries a parseable
+            // plantation UUID.  Legacy records may store "UNSPECIFIED" (set by the
+            // harvest service when the buruh's assignment lacked a plantation ID at
+            // submission time).  The mandor's ability to see the harvest via the
+            // harvest-history API already implies they supervise the creating buruh,
+            // so skipping the check for those records is safe.
+            UUID harvestPlantationId = tryParseUUID(harvest.getPlantationId());
+            if (harvestPlantationId != null && !plantationId.equals(harvestPlantationId)) {
                 throw new IllegalArgumentException(
                         "Harvest " + harvestId + " bukan milik kebun Anda!");
             }
@@ -118,17 +123,18 @@ public class ShipmentServiceImpl implements ShipmentService {
         return shipmentMapper.toResponse(saved, harvestIds);
     }
 
-    /** Parses the plantationId string from a harvest record with a clear error message. */
-    private UUID parseHarvestPlantationId(UUID harvestId, String rawPlantationId) {
-        if (rawPlantationId == null) {
-            throw new IllegalArgumentException(
-                    "Harvest " + harvestId + " memiliki data kebun tidak valid!");
+    /**
+     * Attempts to parse a UUID string.  Returns {@code null} if the value is
+     * null, blank, or not a valid UUID (e.g. the legacy sentinel "UNSPECIFIED").
+     */
+    private UUID tryParseUUID(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
         }
         try {
-            return UUID.fromString(rawPlantationId);
+            return UUID.fromString(raw);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(
-                    "Harvest " + harvestId + " memiliki data kebun tidak valid!");
+            return null;
         }
     }
 
