@@ -1,0 +1,10 @@
+.git
+.github
+.env
+.env.*
+*.env
+build/
+.gradle/
+*.log
+README.md
+docker-compose.yml

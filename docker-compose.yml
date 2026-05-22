@@ -5,6 +5,6 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5435/mysawit_delivery
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secret}
     ports:
       - "8080:8080"
