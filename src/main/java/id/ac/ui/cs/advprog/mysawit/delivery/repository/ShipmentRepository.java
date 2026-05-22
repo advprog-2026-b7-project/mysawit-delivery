@@ -22,6 +22,17 @@ public interface ShipmentRepository extends JpaRepository<Shipment, UUID> {
 
     List<Shipment> findByDriverId(UUID driverId);
 
+    List<Shipment> findByDriverIdAndMandorId(UUID driverId, UUID mandorId);
+
+    @Query("SELECT s FROM Shipment s WHERE s.status = :status "
+            + "AND (:startDate IS NULL OR s.updatedAt >= :startDate) "
+            + "AND (:endDate IS NULL OR s.updatedAt <= :endDate)")
+    List<Shipment> findByStatusWithDateRange(
+            @Param("status") ShipmentStatus status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
     @Query("SELECT s FROM Shipment s WHERE s.driverId = :driverId " +
             "AND (:startDate IS NULL OR s.createdAt >= :startDate) " +
             "AND (:endDate IS NULL OR s.createdAt <= :endDate)")

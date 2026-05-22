@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -16,9 +17,13 @@ public class ShipmentResponse {
     private UUID mandorId;
     private UUID driverId;
     private BigDecimal totalWeightKg;
+    private BigDecimal recognizedWeightKg;
 
     private ShipmentStatus status;
     private String rejectionReason;
+
+    /** IDs of harvest records included in this shipment. */
+    private List<UUID> harvestIds;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

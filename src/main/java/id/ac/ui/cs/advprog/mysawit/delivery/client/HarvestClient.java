@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.mysawit.delivery.client;
 
+import id.ac.ui.cs.advprog.mysawit.delivery.dto.external.HarvestDetailResponse;
+import id.ac.ui.cs.advprog.mysawit.delivery.dto.external.HarvestQueryResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -12,6 +14,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class HarvestClient {
@@ -68,5 +71,28 @@ public class HarvestClient {
         }
 
         return BigDecimal.ZERO;
+    }
+
+    /**
+     * Fetch a single harvest record by its ID.
+     * Returns {@code null} if the record cannot be fetched (not found, service down, etc.).
+     */
+    public HarvestQueryResponse.HarvestItemResponse getHarvestById(
+            UUID harvestId, String authHeader) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.AUTHORIZATION, authHeader);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        String url = harvestServiceUrl + "/api/v1/harvests/" + harvestId;
+        try {
+            ResponseEntity<HarvestDetailResponse> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity, HarvestDetailResponse.class);
+            if (response.getBody() != null) {
+                return response.getBody().getData();
+            }
+        } catch (Exception e) {
+            System.err.println(
+                    "Gagal mengambil harvest " + harvestId + ": " + e.getMessage());
+        }
+        return null;
     }
 }

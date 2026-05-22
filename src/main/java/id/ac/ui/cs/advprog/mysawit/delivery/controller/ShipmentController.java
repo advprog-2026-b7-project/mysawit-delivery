@@ -12,6 +12,8 @@ import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import id.ac.ui.cs.advprog.mysawit.delivery.entity.ShipmentStatus;
 
@@ -22,7 +24,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/deliveries")
+@RequestMapping("/api/v1/deliveries")
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
@@ -71,8 +73,29 @@ public class ShipmentController {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Status tidak valid!");
         }
-        ShipmentResponse response = shipmentService.updateStatus(shipmentId, newStatus);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UUID callerDriverId = UUID.fromString(authentication.getName());
+        ShipmentResponse response =
+                shipmentService.updateStatus(shipmentId, newStatus, callerDriverId);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me/assigned")
+    public ResponseEntity<List<ShipmentResponse>> getMyAssignedDeliveries() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UUID driverId = UUID.fromString(authentication.getName());
+        return ResponseEntity.ok(shipmentService.getAssignedDeliveriesForDriver(driverId));
+    }
+
+    @GetMapping("/me/history")
+    public ResponseEntity<List<ShipmentResponse>> getMyHistory(
+            @RequestParam("startDate") @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam("endDate") @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UUID driverId = UUID.fromString(authentication.getName());
+        return ResponseEntity.ok(shipmentService.getDriverHistory(driverId, startDate, endDate));
     }
 
     @GetMapping
@@ -83,7 +106,9 @@ public class ShipmentController {
     @PatchMapping("/{id}/approve-mandor")
     public ResponseEntity<ShipmentResponse> approveByMandor(
             @PathVariable("id") UUID shipmentId) {
-        ShipmentResponse response = shipmentService.approveByMandor(shipmentId);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UUID callerMandorId = UUID.fromString(authentication.getName());
+        ShipmentResponse response = shipmentService.approveByMandor(shipmentId, callerMandorId);
         return ResponseEntity.ok(response);
     }
 
@@ -91,9 +116,38 @@ public class ShipmentController {
     public ResponseEntity<ShipmentResponse> rejectByMandor(
             @PathVariable("id") UUID shipmentId,
             @RequestBody Map<String, String> requestBody) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UUID callerMandorId = UUID.fromString(authentication.getName());
         String reason = requestBody.get("reason");
-        ShipmentResponse response = shipmentService.rejectByMandor(shipmentId, reason);
+        ShipmentResponse response =
+                shipmentService.rejectByMandor(shipmentId, reason, callerMandorId);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me/mandor/ongoing")
+    public ResponseEntity<List<ShipmentResponse>> getMyOngoingDeliveries() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UUID mandorId = UUID.fromString(authentication.getName());
+        return ResponseEntity.ok(shipmentService.getOngoingDeliveriesForMandor(mandorId));
+    }
+
+    @GetMapping("/me/mandor/driver/{driverId}")
+    public ResponseEntity<List<ShipmentResponse>> getMyDriverDeliveries(
+            @PathVariable("driverId") UUID driverId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UUID mandorId = UUID.fromString(authentication.getName());
+        return ResponseEntity.ok(
+                shipmentService.getDriverDeliveriesForMandor(driverId, mandorId));
+    }
+
+    @GetMapping("/admin/pending-review")
+    public ResponseEntity<List<ShipmentResponse>> getAdminPendingReview(
+            @RequestParam(required = false) @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        return ResponseEntity.ok(
+                shipmentService.getApprovedByMandorShipments(startDate, endDate));
     }
 
     @PatchMapping("/{id}/approve-admin")

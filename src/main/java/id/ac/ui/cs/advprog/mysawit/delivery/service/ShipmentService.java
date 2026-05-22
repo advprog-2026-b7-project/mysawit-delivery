@@ -17,17 +17,22 @@ public interface ShipmentService {
 
     ShipmentResponse assignDriver(UUID shipmentId, UUID driverId);
 
-    ShipmentResponse updateStatus(UUID shipmentId, ShipmentStatus newStatus);
+    ShipmentResponse updateStatus(UUID shipmentId, ShipmentStatus newStatus, UUID callerDriverId);
 
     List<ShipmentResponse> getAllShipments();
 
-    ShipmentResponse approveByMandor(UUID id);
+    ShipmentResponse approveByMandor(UUID id, UUID callerMandorId);
 
-    ShipmentResponse rejectByMandor(UUID id, String reason);
+    ShipmentResponse rejectByMandor(UUID id, String reason, UUID callerMandorId);
+
+    List<ShipmentResponse> getDriverDeliveriesForMandor(UUID driverId, UUID callerMandorId);
 
     ShipmentResponse approveByAdmin(UUID id);
 
     ShipmentResponse rejectByAdmin(UUID id, AdminRejectRequest request);
+
+    List<ShipmentResponse> getApprovedByMandorShipments(
+            LocalDateTime startDate, LocalDateTime endDate);
 
     List<ShipmentResponse> getAssignedDeliveriesForDriver(UUID driverId);
 
